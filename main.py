@@ -189,9 +189,9 @@ class AreaMeasurementApp:
         small_rect_height = panel_height/self.scale_factor
         small_size = (small_rect_width,small_rect_height)
 
-        gap_width = 0.1 / self.scale_factor  # unit: meter
+        gap_width = 0.2 / self.scale_factor  # unit: meter
         big_gap_height = 0.6/self.scale_factor
-        small_gap_height = 0.1/self.scale_factor
+        small_gap_height = 0.2/self.scale_factor
         gap_height = big_gap_height*1/2+small_gap_height*1/2
 
         # Calculate the number of rectangles that can fit within the rotated rectangle
@@ -229,7 +229,6 @@ class AreaMeasurementApp:
         kW_total = panel_power * num_rectangles_total /1000
         self.total_rectangles_label.config(text=f"panel:{num_rectangles_horizontal}x{num_rectangles_vertical}= {num_rectangles_total} , kWp: {kW_total}")
 
-        
 
     def rotate_point(self, x, y, center_x, center_y, angle):
         # Rotate a point (x, y) around a center (center_x, center_y) by a given angle (in degrees)
@@ -253,11 +252,6 @@ class AreaMeasurementApp:
         self.draw_rotated_rectangle(center, size, angle)
         self.draw_small_rectangles(center, size, angle,(550,2.278,1.134))
 
-        # Display or use the calculated properties as needed
-        # print(f"Center: {center}")
-        # print(f"Width: {width} pixels")
-        # print(f"Height: {height} pixels")
-        # print(f"Rotation Angle: {angle} degrees")
 
     def calculate_rectangle2(self):
         # Calculate approximate rectangle properties
@@ -274,16 +268,10 @@ class AreaMeasurementApp:
         self.draw_rotated_rectangle(center, size, angle)
         self.draw_small_rectangles(center, size, angle,(600,2.465,1.134))
 
-        # Display or use the calculated properties as needed
-        # print(f"Center: {center}")
-        # print(f"Width: {width} pixels")
-        # print(f"Height: {height} pixels")
-        # print(f"Rotation Angle: {angle} degrees")
-
 
 def main():
     root = tk.Tk()
-    app = AreaMeasurementApp(root, r"C:\Users\Egat\Desktop\Screenshot 2023-11-12 170355.png")
+    app = AreaMeasurementApp(root, r"C:\Users\Egat\Desktop\Screenshot 2023-11-17 005107.png")
     root.mainloop()
 
 
