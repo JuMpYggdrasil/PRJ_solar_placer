@@ -227,7 +227,7 @@ class AreaMeasurementApp:
         # Update the label to display the total number of rectangles
         num_rectangles_total = num_rectangles_horizontal * num_rectangles_vertical
         kW_total = panel_power * num_rectangles_total /1000
-        self.total_rectangles_label.config(text=f"panel:{num_rectangles_horizontal}x{num_rectangles_vertical}= {num_rectangles_total} , kWp: {kW_total}")
+        self.total_rectangles_label.config(text=f"panel:{num_rectangles_horizontal}x{num_rectangles_vertical}= {num_rectangles_total} , kWp: {kW_total} , Helio:({kW_total*0.75})")
 
 
     def rotate_point(self, x, y, center_x, center_y, angle):
