@@ -1,31 +1,53 @@
 import cv2
 import numpy as np
 import tkinter as tk
-from PIL import Image, ImageTk
+from tkinter import ttk
+from tkinter import filedialog
 from tkinter import simpledialog
+from PIL import Image, ImageTk
 import math
 
+# Define panel_info as a global variable
+panel_info = {
+    "Jinko 350W": (350, 1.956, 0.992),
+    "Jinko 550W": (550, 2.278, 1.134),# default
+    "Jinko 600W": (600, 2.465, 1.134)
+}
 
 class AreaMeasurementApp:
-    def __init__(self, master, image_path):
+    def __init__(self, master):
         self.master = master
-        self.master.title("Area Measurement Tool")
-
-        # Load the original image
-        self.original_image = Image.open(image_path)
-
-        # Resize the image to half its original size
-        new_size = (int(self.original_image.width *2/3), int(self.original_image.height *2/3))
-        self.original_image = self.original_image.resize(new_size, Image.Resampling.LANCZOS)
-
-        self.tk_image = ImageTk.PhotoImage(self.original_image)
+        # self.master.attributes('-fullscreen', True)
+        width= self.master.winfo_screenwidth() 
+        height= self.master.winfo_screenheight()
+        #setting tkinter window size
+        self.master.geometry("%dx%d" % (width, height))
+        self.master.title("Solar Panel Estimation Tool")
 
         # Create Canvas
-        self.canvas = tk.Canvas(self.master, width=self.original_image.width, height=self.original_image.height)
+        self.canvas = tk.Canvas(self.master)
         self.canvas.pack()
 
-        # Display the original image on the canvas
-        self.canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_image)
+        frame4 = tk.Frame(self.master)
+        frame4.pack(side=tk.TOP)
+
+        # Entry widget for gap_width
+        self.gap_width_entry = tk.Entry(frame4)
+        self.gap_width_entry.insert(0, "0.2")  # Set default value
+        self.gap_width_entry.pack(side=tk.LEFT)
+        tk.Label(frame4, text="Gap Width (m):").pack(side=tk.LEFT)
+
+        # Entry widget for big_gap_height
+        self.big_gap_height_entry = tk.Entry(frame4)
+        self.big_gap_height_entry.insert(0, "0.6")  # Set default value
+        self.big_gap_height_entry.pack(side=tk.LEFT)
+        tk.Label(frame4, text="Big Gap Height (m):").pack(side=tk.LEFT)
+
+        # Entry widget for small_gap_height
+        self.small_gap_height_entry = tk.Entry(frame4)
+        self.small_gap_height_entry.insert(0, "0.2")  # Set default value
+        self.small_gap_height_entry.pack(side=tk.LEFT)
+        tk.Label(frame4, text="Small Gap Height (m):").pack(side=tk.LEFT)
 
         # Create a frame for the first line (area_label and distance_label)
         frame1 = tk.Frame(self.master)
@@ -56,17 +78,29 @@ class AreaMeasurementApp:
         frame2 = tk.Frame(self.master)
         frame2.pack(side=tk.TOP)
 
-        # Create a button to calculate rectangle properties (initially disabled)
-        self.calculate_button1 = tk.Button(frame2, text="Jinko 550W", command=self.calculate_rectangle1,
-                                        state=tk.DISABLED)
-        self.calculate_button1.pack(side=tk.LEFT)
+        # Add a button to browse and load an image
+        self.browse_button = tk.Button(frame2, text="Browse Image", command=self.browse_image)
+        self.browse_button.pack(side=tk.LEFT)
 
+        # Create a Combobox for panel types
+        panel_types = list(panel_info.keys())
+        self.panel_type_var = tk.StringVar(value=panel_types[1])  # Set the default panel type
+        self.panel_type_combobox = ttk.Combobox(frame2, textvariable=self.panel_type_var, values=panel_types)
+        self.panel_type_combobox.pack(side=tk.LEFT)
 
+        # Create a button to calculate rectangle properties based on the selected panel type
+        self.calculate_button = tk.Button(frame2, text="Calculate", command=self.calculate_rectangle,state=tk.DISABLED)
+        self.calculate_button.pack(side=tk.LEFT)
 
-        # Create a button to calculate rectangle properties (initially disabled)
-        self.calculate_button2 = tk.Button(frame2, text="Jinko 600W", command=self.calculate_rectangle2,
-                                        state=tk.DISABLED)
-        self.calculate_button2.pack(side=tk.LEFT)
+        self.clear_button = tk.Button(frame2, text="clear", command=self.clear_canvas)
+        self.clear_button.pack(side=tk.LEFT)
+
+        self.clear_all_button = tk.Button(frame2, text="clear all", command=self.clear_all_canvas)
+        self.clear_all_button.pack(side=tk.LEFT)
+
+        # # Create a button to save the canvas
+        # self.save_button = tk.Button(frame2, text="Save Canvas", command=self.save_canvas)
+        # self.save_button.pack(side=tk.LEFT)
 
 
         # Create a frame for the third line (total_rectangles_label)
@@ -76,30 +110,74 @@ class AreaMeasurementApp:
         # Create a label to display the total number of rectangles
         self.total_rectangles_label = tk.Label(frame3, text="Total Rectangles: 0")
         self.total_rectangles_label.pack(side=tk.LEFT)
+        # Inside the __init__ method
+
+
+    def browse_image(self):
+        # Open a file dialog to select an image file
+        file_path = filedialog.askopenfilename(filetypes=[("Image files", "*.png;*.jpg;*.jpeg;*.gif")])
+
+        if file_path:
+            # Load the selected image
+            self.load_image(file_path)
+            # Make the browse_button invisible
+            self.browse_button.pack_forget()
+
+
+    def load_image(self, image_path):
+        # Load the original image
+        self.original_image = Image.open(image_path)
+
+        # Resize the image to half its original size
+        new_size = (int(self.original_image.width *3/4), int(self.original_image.height *3/4))
+        self.original_image = self.original_image.resize(new_size, Image.Resampling.LANCZOS)
+
+        self.tk_image = ImageTk.PhotoImage(self.original_image)
+
+        # Display the original image on the canvas
+        self.canvas.config(width=self.original_image.width, height=self.original_image.height)
+
+        # Display the original image on the canvas
+        self.canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_image)
+        
+
+        
+    def clear_canvas(self):
+        self.points = self.points[:2]
+        self.reload_canvas()
+
+
+    def clear_all_canvas(self):
+        self.points = []
+        self.reload_canvas()
 
     def on_canvas_click(self, event):
         x, y = event.x, event.y
         self.points.append((x, y))
-        if len(self.points) <= 2:
+        num_points = len(self.points)
+        if num_points <= 2:
             self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="purple")
         else:
             self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="red")
 
         # If the first two points are clicked, prompt the user to enter the scale factor
-        if len(self.points) == 2:
-            d_val = simpledialog.askfloat("Scale Factor", "Enter the scale factor (pixels to meters):")
+        if num_points == 2:
             pixel_distance = ((self.points[-2][0] - self.points[-1][0]) ** 2 + (
                         self.points[-2][1] - self.points[-1][1]) ** 2) ** 0.5
-            self.scale_factor = d_val / pixel_distance
-            print("scale_factor: ")
-            print(self.scale_factor)
-            if self.scale_factor is None:
-                # If the user cancels, clear the points and return
-                self.points = []
+            d_val = simpledialog.askfloat("Scale Factor", "Enter the scale factor (pixels to meters):")
+            if d_val is not None:
+                self.scale_factor = d_val / pixel_distance
+                print("scale_factor: ")
+                print(self.scale_factor)
+            else:
+                # If the user cancels, clear the points and canvas and return
+                self.clear_all_canvas()
                 return
 
+               
+
         # If more than three points are clicked, draw a line to close the loop
-        if len(self.points) > 3:
+        if num_points > 3:
             # self.canvas.create_line(self.points[-2], self.points[-1], fill="blue")
             area = self.calculate_area()
             self.area_label.config(text=f"Area: {area:.2f} square meters")
@@ -107,9 +185,8 @@ class AreaMeasurementApp:
             self.distance_label.config(text=f"Distance: {distance:.2f} meters")
 
         # Enable the calculate button when six points are clicked
-        if len(self.points) == 6:
-            self.calculate_button1["state"] = tk.NORMAL
-            self.calculate_button2["state"] = tk.NORMAL
+        if num_points == 6:
+            self.calculate_button["state"] = tk.NORMAL
 
     def on_mousewheel(self, event):
         # Update the zoom factor based on the mouse wheel movement
@@ -117,6 +194,10 @@ class AreaMeasurementApp:
             self.zoom_factor *= 1.1
         else:
             self.zoom_factor /= 1.1
+
+        self.reload_canvas()
+
+    def reload_canvas(self):
 
         # Resize the image based on the zoom factor
         width = int(self.original_image.width * self.zoom_factor)
@@ -189,9 +270,10 @@ class AreaMeasurementApp:
         small_rect_height = panel_height/self.scale_factor
         small_size = (small_rect_width,small_rect_height)
 
-        gap_width = 0.2 / self.scale_factor  # unit: meter
-        big_gap_height = 0.6/self.scale_factor
-        small_gap_height = 0.2/self.scale_factor
+        # Inside the draw_small_rectangles method
+        gap_width = float(self.gap_width_entry.get()) / self.scale_factor
+        big_gap_height = float(self.big_gap_height_entry.get()) / self.scale_factor
+        small_gap_height = float(self.small_gap_height_entry.get()) / self.scale_factor
         gap_height = big_gap_height*1/2+small_gap_height*1/2
 
         # Calculate the number of rectangles that can fit within the rotated rectangle
@@ -227,7 +309,7 @@ class AreaMeasurementApp:
         # Update the label to display the total number of rectangles
         num_rectangles_total = num_rectangles_horizontal * num_rectangles_vertical
         kW_total = panel_power * num_rectangles_total /1000
-        self.total_rectangles_label.config(text=f"panel:{num_rectangles_horizontal}x{num_rectangles_vertical}= {num_rectangles_total} , kWp: {kW_total} , Helio:({kW_total*0.75})")
+        self.total_rectangles_label.config(text=f"panel:{num_rectangles_horizontal}x{num_rectangles_vertical}= {num_rectangles_total} , kWp: {kW_total:.2f} kW, Helio:({kW_total*0.75:.2f} kW)")
 
 
     def rotate_point(self, x, y, center_x, center_y, angle):
@@ -237,41 +319,34 @@ class AreaMeasurementApp:
         rotated_y = center_y + (x - center_x) * math.sin(angle_rad) + (y - center_y) * math.cos(angle_rad)
         return rotated_x, rotated_y
 
-    def calculate_rectangle1(self):
-        # Calculate approximate rectangle properties
-        # Use the last four points to calculate rectangle properties
-        x_coords, y_coords = zip(*self.points[-4:])
-        points = np.array(self.points[-4:], dtype=np.int32)
+    def calculate_rectangle(self):
+        selected_panel_type = self.panel_type_var.get()
+        panel = panel_info.get(selected_panel_type)
 
-        # Find the minimum area rectangle using OpenCV
-        rect = cv2.minAreaRect(points)
+        if panel:
+            num_points = len(self.points)
+            if num_points>0:
+                # Calculate approximate rectangle properties
+                # Use the last four points to calculate rectangle properties
+                x_coords, y_coords = zip(*self.points[-4:])
+                points = np.array(self.points[-4:], dtype=np.int32)
 
-        # Unpack the rectangle properties
-        center, size, angle = rect
-        # Draw the rotated rectangle on the canvas
-        self.draw_rotated_rectangle(center, size, angle)
-        self.draw_small_rectangles(center, size, angle,(550,2.278,1.134))
+                # Find the minimum area rectangle using OpenCV
+                rect = cv2.minAreaRect(points)
 
-
-    def calculate_rectangle2(self):
-        # Calculate approximate rectangle properties
-        # Use the last four points to calculate rectangle properties
-        x_coords, y_coords = zip(*self.points[-4:])
-        points = np.array(self.points[-4:], dtype=np.int32)
-
-        # Find the minimum area rectangle using OpenCV
-        rect = cv2.minAreaRect(points)
-
-        # Unpack the rectangle properties
-        center, size, angle = rect
-        # Draw the rotated rectangle on the canvas
-        self.draw_rotated_rectangle(center, size, angle)
-        self.draw_small_rectangles(center, size, angle,(600,2.465,1.134))
+                # Unpack the rectangle properties
+                center, size, angle = rect
+                # Draw the rotated rectangle on the canvas
+                self.draw_rotated_rectangle(center, size, angle)
+                self.draw_small_rectangles(center, size, angle,panel)
+        else:
+            # Handle the case when the selected panel type is not found
+            print("Selected panel type not found")
 
 
 def main():
     root = tk.Tk()
-    app = AreaMeasurementApp(root, r"C:\Users\Egat\Desktop\Screenshot 2023-11-17 005107.png")
+    app = AreaMeasurementApp(root)
     root.mainloop()
 
 
