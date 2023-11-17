@@ -2,8 +2,9 @@ import cv2
 import numpy as np
 import tkinter as tk
 from tkinter import ttk
-from PIL import Image, ImageTk
+from tkinter import filedialog
 from tkinter import simpledialog
+from PIL import Image, ImageTk
 import math
 
 # Define panel_info as a global variable
@@ -14,7 +15,7 @@ panel_info = {
 }
 
 class AreaMeasurementApp:
-    def __init__(self, master, image_path):
+    def __init__(self, master):
         self.master = master
         # self.master.attributes('-fullscreen', True)
         width= self.master.winfo_screenwidth() 
@@ -23,21 +24,9 @@ class AreaMeasurementApp:
         self.master.geometry("%dx%d" % (width, height))
         self.master.title("Solar Panel Estimation Tool")
 
-        # Load the original image
-        self.original_image = Image.open(image_path)
-
-        # Resize the image to half its original size
-        new_size = (int(self.original_image.width *3/4), int(self.original_image.height *3/4))
-        self.original_image = self.original_image.resize(new_size, Image.Resampling.LANCZOS)
-
-        self.tk_image = ImageTk.PhotoImage(self.original_image)
-
         # Create Canvas
-        self.canvas = tk.Canvas(self.master, width=self.original_image.width, height=self.original_image.height)
+        self.canvas = tk.Canvas(self.master)
         self.canvas.pack()
-
-        # Display the original image on the canvas
-        self.canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_image)
 
         frame4 = tk.Frame(self.master)
         frame4.pack(side=tk.TOP)
@@ -89,6 +78,10 @@ class AreaMeasurementApp:
         frame2 = tk.Frame(self.master)
         frame2.pack(side=tk.TOP)
 
+        # Add a button to browse and load an image
+        self.browse_button = tk.Button(frame2, text="Browse Image", command=self.browse_image)
+        self.browse_button.pack(side=tk.LEFT)
+
         # Create a Combobox for panel types
         panel_types = list(panel_info.keys())
         self.panel_type_var = tk.StringVar(value=panel_types[1])  # Set the default panel type
@@ -105,6 +98,10 @@ class AreaMeasurementApp:
         self.clear_all_button = tk.Button(frame2, text="clear all", command=self.clear_all_canvas)
         self.clear_all_button.pack(side=tk.LEFT)
 
+        # # Create a button to save the canvas
+        # self.save_button = tk.Button(frame2, text="Save Canvas", command=self.save_canvas)
+        # self.save_button.pack(side=tk.LEFT)
+
 
         # Create a frame for the third line (total_rectangles_label)
         frame3 = tk.Frame(self.master)
@@ -114,6 +111,35 @@ class AreaMeasurementApp:
         self.total_rectangles_label = tk.Label(frame3, text="Total Rectangles: 0")
         self.total_rectangles_label.pack(side=tk.LEFT)
         # Inside the __init__ method
+
+
+    def browse_image(self):
+        # Open a file dialog to select an image file
+        file_path = filedialog.askopenfilename(filetypes=[("Image files", "*.png;*.jpg;*.jpeg;*.gif")])
+
+        if file_path:
+            # Load the selected image
+            self.load_image(file_path)
+            # Make the browse_button invisible
+            self.browse_button.pack_forget()
+
+
+    def load_image(self, image_path):
+        # Load the original image
+        self.original_image = Image.open(image_path)
+
+        # Resize the image to half its original size
+        new_size = (int(self.original_image.width *3/4), int(self.original_image.height *3/4))
+        self.original_image = self.original_image.resize(new_size, Image.Resampling.LANCZOS)
+
+        self.tk_image = ImageTk.PhotoImage(self.original_image)
+
+        # Display the original image on the canvas
+        self.canvas.config(width=self.original_image.width, height=self.original_image.height)
+
+        # Display the original image on the canvas
+        self.canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_image)
+        
 
         
     def clear_canvas(self):
@@ -317,9 +343,10 @@ class AreaMeasurementApp:
             # Handle the case when the selected panel type is not found
             print("Selected panel type not found")
 
+
 def main():
     root = tk.Tk()
-    app = AreaMeasurementApp(root, r"C:\Users\Egat\Desktop\Screenshot 2023-11-17 005107.png")
+    app = AreaMeasurementApp(root)
     root.mainloop()
 
 
