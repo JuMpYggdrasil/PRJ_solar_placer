@@ -8,9 +8,9 @@ from PIL import Image, ImageTk
 import math
 
 # Define panel_info as a global variable
-# (power,width,height)
+# Each entry contains (power, width, height) information for different solar panels
 panel_info = {
-    "Jinko 550W": (550, 2.278, 1.134),# default
+    "Jinko 550W": (550, 2.278, 1.134),  # Default
     "Trina 300W": (300, 1.956, 0.992),
     "Jinko 350W": (350, 1.956, 0.992),
     "Jinko 500W": (500, 1.956, 1.310),
@@ -23,13 +23,13 @@ class AreaMeasurementApp:
         self.points = []
         self.prohibited_points = []
 
+        # Initialize distance_labels list
         self.distance_labels = []
 
         self.master = master
-        # self.master.attributes('-fullscreen', True)
-        width= self.master.winfo_screenwidth() 
-        height= self.master.winfo_screenheight()
-        #setting tkinter window size
+        width = self.master.winfo_screenwidth()
+        height = self.master.winfo_screenheight()
+        # Setting tkinter window size
         self.master.geometry("%dx%d" % (width, height))
         self.master.title("Solar Panel Estimation Tool")
 
@@ -47,13 +47,13 @@ class AreaMeasurementApp:
         self.gap_width_entry.pack(side=tk.LEFT)
 
         # Entry widget for small_gap_height
-        tk.Label(frame4, text=" Gap Height (m):").pack(side=tk.LEFT)
+        tk.Label(frame4, text="Gap Height (m):").pack(side=tk.LEFT)
         self.small_gap_height_entry = tk.Entry(frame4)
         self.small_gap_height_entry.insert(0, "0.2")  # Set default value
         self.small_gap_height_entry.pack(side=tk.LEFT)
         
         # Entry widget for big_gap_height
-        tk.Label(frame4, text=" Walk Gap (m):").pack(side=tk.LEFT)
+        tk.Label(frame4, text="Walk Gap (m):").pack(side=tk.LEFT)
         self.big_gap_height_entry = tk.Entry(frame4)
         self.big_gap_height_entry.insert(0, "0.6")  # Set default value
         self.big_gap_height_entry.pack(side=tk.LEFT)
@@ -61,8 +61,6 @@ class AreaMeasurementApp:
         # Create a frame for the first line (area_label and distance_label)
         frame1 = tk.Frame(self.master)
         frame1.pack(side=tk.TOP)
-
-
 
         # Create a label to display the measured area
         self.area_label = tk.Label(frame1, text="Area: ")
@@ -99,19 +97,14 @@ class AreaMeasurementApp:
         self.panel_type_combobox.pack(side=tk.LEFT)
 
         # Create a button to calculate rectangle properties based on the selected panel type
-        self.calculate_button = tk.Button(frame2, text="Calculate", command=self.calculate_rectangle,state=tk.DISABLED)
+        self.calculate_button = tk.Button(frame2, text="Calculate", command=self.calculate_rectangle, state=tk.DISABLED)
         self.calculate_button.pack(side=tk.LEFT)
 
-        self.clear_button = tk.Button(frame2, text="clear", command=self.clear_canvas)
+        self.clear_button = tk.Button(frame2, text="Clear", command=self.clear_canvas)
         self.clear_button.pack(side=tk.LEFT)
 
-        self.clear_all_button = tk.Button(frame2, text="clear all", command=self.clear_all_canvas)
+        self.clear_all_button = tk.Button(frame2, text="Clear All", command=self.clear_all_canvas)
         self.clear_all_button.pack(side=tk.LEFT)
-
-        # # Create a button to save the canvas
-        # self.save_button = tk.Button(frame2, text="Save Canvas", command=self.save_canvas)
-        # self.save_button.pack(side=tk.LEFT)
-
 
         # Create a frame for the third line (total_rectangles_label)
         frame3 = tk.Frame(self.master)
@@ -121,8 +114,6 @@ class AreaMeasurementApp:
         self.total_rectangles_label = tk.Label(frame3, text="Total Rectangles: 0")
         self.total_rectangles_label.pack(side=tk.LEFT)
         # Inside the __init__ method
-
-
 
     def browse_image(self):
         # Open a file dialog to select an image file
