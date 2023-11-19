@@ -12,6 +12,8 @@ windspeed_data = df['windspeed'].dropna()
 
 # Fit the data to a Weibull distribution
 params = weibull_min.fit(windspeed_data)
+# params = weibull_min.fit(windspeed_data, floc=0)
+# params = weibull_min.fit(windspeed_data, floc=0, f0=1)
 
 # Extract the scaling factor (c) and form factor (k) from the fitted parameters
 c, k = params[1], params[2]
@@ -39,6 +41,7 @@ print("Sum of Histogram Values:", sum_hist_percentage)
 # Print the Weibull scaling factor and form factor
 print("Weibull Scaling Factor (c):", c)
 print("Weibull Form Factor (k):", k)
+# in thailand 2.3<c<5.9, 1.2<k<2.7
 
 #  To find A,k optional use
 # https://wind-data.ch/tools/weibull.php
