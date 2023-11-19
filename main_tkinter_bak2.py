@@ -42,10 +42,6 @@ class AreaMeasurementApp:
         frame4 = tk.Frame(self.master)
         frame4.pack(side=tk.TOP)
 
-        # Add a button to browse and load an image
-        self.browse_button = tk.Button(frame4, text="Browse Image", command=self.browse_image)
-        self.browse_button.pack(side=tk.LEFT)
-
         # Entry widget for gap_width
         tk.Label(frame4, text="Gap Width (m):").pack(side=tk.LEFT)
         self.gap_width_entry = tk.Entry(frame4)
@@ -63,7 +59,6 @@ class AreaMeasurementApp:
         self.big_gap_height_entry = tk.Entry(frame4)
         self.big_gap_height_entry.insert(0, "0.6")  # Set default value
         self.big_gap_height_entry.pack(side=tk.LEFT)
-
         
         # Create a frame for the first line (area_label and distance_label)
         frame1 = tk.Frame(self.master)
@@ -93,7 +88,9 @@ class AreaMeasurementApp:
         frame2 = tk.Frame(self.master)
         frame2.pack(side=tk.TOP)
 
-        
+        # Add a button to browse and load an image
+        self.browse_button = tk.Button(frame2, text="Browse Image", command=self.browse_image)
+        self.browse_button.pack(side=tk.LEFT)
 
         # Create a Combobox for panel types
         panel_types = list(panel_info.keys())
@@ -102,7 +99,7 @@ class AreaMeasurementApp:
         self.panel_type_combobox.pack(side=tk.LEFT)
 
         # Create a button to calculate rectangle properties based on the selected panel type
-        self.calculate_button = tk.Button(frame2, text="PV Panel", command=self.calculate_rectangle, state=tk.DISABLED)
+        self.calculate_button = tk.Button(frame2, text="Calculate", command=self.calculate_rectangle, state=tk.DISABLED)
         self.calculate_button.pack(side=tk.LEFT)
 
         self.keepout_button = tk.Button(frame2, text="Keepout", command=self.add_keepout)
@@ -380,7 +377,7 @@ class AreaMeasurementApp:
         # Update the label to display the total number of rectangles
         num_rectangles_total = num_rectangles_horizontal * num_rectangles_vertical - intersection_count
         kW_total = panel_power * num_rectangles_total /1000
-        self.total_rectangles_label.config(text=f"panel:{num_rectangles_horizontal}x{num_rectangles_vertical}= {num_rectangles_total} , kWp: {kW_total:.2f} kW, Helio:({kW_total*0.75:.2f} kW)")#88% 
+        self.total_rectangles_label.config(text=f"panel:{num_rectangles_horizontal}x{num_rectangles_vertical}= {num_rectangles_total} , kWp: {kW_total:.2f} kW, Helio:({kW_total*0.75:.2f} kW)")
 
     def check_hit_detection(self, rect1, rect2):
         # Check for precise intersection between two rotated rectangles
