@@ -8,19 +8,28 @@ from PIL import Image, ImageTk
 import math
 
 # Define panel_info as a global variable
+# Each entry contains (power, width, height) information for different solar panels
 panel_info = {
+    "Jinko 550W": (550, 2.278, 1.134),  # Default
+    "Trina 300W": (300, 1.956, 0.992),
     "Jinko 350W": (350, 1.956, 0.992),
-    "Jinko 550W": (550, 2.278, 1.134),# default
+    "Jinko 500W": (500, 1.956, 1.310),
     "Jinko 600W": (600, 2.465, 1.134)
 }
 
 class AreaMeasurementApp:
     def __init__(self, master):
+        # Store clicked points
+        self.points = []
+        self.prohibited_points = []
+
+        # Initialize distance_labels list
+        self.distance_labels = []
+
         self.master = master
-        # self.master.attributes('-fullscreen', True)
-        width= self.master.winfo_screenwidth() 
-        height= self.master.winfo_screenheight()
-        #setting tkinter window size
+        width = self.master.winfo_screenwidth()
+        height = self.master.winfo_screenheight()
+        # Setting tkinter window size
         self.master.geometry("%dx%d" % (width, height))
         self.master.title("Solar Panel Estimation Tool")
 
@@ -32,30 +41,26 @@ class AreaMeasurementApp:
         frame4.pack(side=tk.TOP)
 
         # Entry widget for gap_width
+        tk.Label(frame4, text="Gap Width (m):").pack(side=tk.LEFT)
         self.gap_width_entry = tk.Entry(frame4)
         self.gap_width_entry.insert(0, "0.2")  # Set default value
         self.gap_width_entry.pack(side=tk.LEFT)
-        tk.Label(frame4, text="Gap Width (m):").pack(side=tk.LEFT)
-
-        # Entry widget for big_gap_height
-        self.big_gap_height_entry = tk.Entry(frame4)
-        self.big_gap_height_entry.insert(0, "0.6")  # Set default value
-        self.big_gap_height_entry.pack(side=tk.LEFT)
-        tk.Label(frame4, text="Big Gap Height (m):").pack(side=tk.LEFT)
 
         # Entry widget for small_gap_height
+        tk.Label(frame4, text="Gap Height (m):").pack(side=tk.LEFT)
         self.small_gap_height_entry = tk.Entry(frame4)
         self.small_gap_height_entry.insert(0, "0.2")  # Set default value
         self.small_gap_height_entry.pack(side=tk.LEFT)
-        tk.Label(frame4, text="Small Gap Height (m):").pack(side=tk.LEFT)
-
+        
+        # Entry widget for big_gap_height
+        tk.Label(frame4, text="Walk Gap (m):").pack(side=tk.LEFT)
+        self.big_gap_height_entry = tk.Entry(frame4)
+        self.big_gap_height_entry.insert(0, "0.6")  # Set default value
+        self.big_gap_height_entry.pack(side=tk.LEFT)
+        
         # Create a frame for the first line (area_label and distance_label)
         frame1 = tk.Frame(self.master)
         frame1.pack(side=tk.TOP)
-
-        # Store clicked points
-        self.points = []
-        self.distance_labels = []
 
         # Create a label to display the measured area
         self.area_label = tk.Label(frame1, text="Area: ")
@@ -74,6 +79,9 @@ class AreaMeasurementApp:
         self.canvas.bind("<Button-1>", self.on_canvas_click)
         self.canvas.bind("<MouseWheel>", self.on_mousewheel)
 
+        # Bind right-click event for creating prohibited areas
+        self.canvas.bind("<Button-3>", self.on_canvas_right_click)
+
         # Create a frame for the second line (buttons)
         frame2 = tk.Frame(self.master)
         frame2.pack(side=tk.TOP)
@@ -84,24 +92,19 @@ class AreaMeasurementApp:
 
         # Create a Combobox for panel types
         panel_types = list(panel_info.keys())
-        self.panel_type_var = tk.StringVar(value=panel_types[1])  # Set the default panel type
+        self.panel_type_var = tk.StringVar(value=panel_types[0])  # Set the default panel type
         self.panel_type_combobox = ttk.Combobox(frame2, textvariable=self.panel_type_var, values=panel_types)
         self.panel_type_combobox.pack(side=tk.LEFT)
 
         # Create a button to calculate rectangle properties based on the selected panel type
-        self.calculate_button = tk.Button(frame2, text="Calculate", command=self.calculate_rectangle,state=tk.DISABLED)
+        self.calculate_button = tk.Button(frame2, text="Calculate", command=self.calculate_rectangle, state=tk.DISABLED)
         self.calculate_button.pack(side=tk.LEFT)
 
-        self.clear_button = tk.Button(frame2, text="clear", command=self.clear_canvas)
+        self.clear_button = tk.Button(frame2, text="Clear", command=self.clear_canvas)
         self.clear_button.pack(side=tk.LEFT)
 
-        self.clear_all_button = tk.Button(frame2, text="clear all", command=self.clear_all_canvas)
+        self.clear_all_button = tk.Button(frame2, text="Clear All", command=self.clear_all_canvas)
         self.clear_all_button.pack(side=tk.LEFT)
-
-        # # Create a button to save the canvas
-        # self.save_button = tk.Button(frame2, text="Save Canvas", command=self.save_canvas)
-        # self.save_button.pack(side=tk.LEFT)
-
 
         # Create a frame for the third line (total_rectangles_label)
         frame3 = tk.Frame(self.master)
@@ -111,7 +114,6 @@ class AreaMeasurementApp:
         self.total_rectangles_label = tk.Label(frame3, text="Total Rectangles: 0")
         self.total_rectangles_label.pack(side=tk.LEFT)
         # Inside the __init__ method
-
 
     def browse_image(self):
         # Open a file dialog to select an image file
@@ -149,6 +151,14 @@ class AreaMeasurementApp:
 
     def clear_all_canvas(self):
         self.points = []
+        self.prohibited_points = []
+        self.reload_canvas()
+
+    def on_canvas_right_click(self, event):
+        x, y = event.x, event.y
+        self.prohibited_points.append((x, y))
+        if len(self.prohibited_points) > 4:
+            self.prohibited_points.pop(0)
         self.reload_canvas()
 
     def on_canvas_click(self, event):
@@ -188,6 +198,11 @@ class AreaMeasurementApp:
         if num_points == 6:
             self.calculate_button["state"] = tk.NORMAL
 
+        if num_points > 6:
+            self.points.pop(2)
+        
+        self.reload_canvas()
+
     def on_mousewheel(self, event):
         # Update the zoom factor based on the mouse wheel movement
         if event.delta > 0:
@@ -209,6 +224,20 @@ class AreaMeasurementApp:
         self.canvas.config(width=width, height=height)
         self.canvas.delete("all")
         self.canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_image)
+
+        for index,point in enumerate(self.points):
+            x, y = point
+            if index < 2:
+                self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="purple")
+            else:
+                self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="red")
+
+        # Draw prohibited areas
+        for area in self.prohibited_points:
+            x, y = area
+            self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="magenta")
+            if len(self.prohibited_points)==4:
+                self.canvas.create_polygon(self.prohibited_points[0][0], self.prohibited_points[0][1], self.prohibited_points[1][0], self.prohibited_points[1][1], self.prohibited_points[2][0], self.prohibited_points[2][1], self.prohibited_points[3][0], self.prohibited_points[3][1], fill="lightyellow", stipple="gray50")
 
     def calculate_area(self):
         # Shoelace formula to calculate the area of a polygon
@@ -264,6 +293,7 @@ class AreaMeasurementApp:
         self.canvas.create_polygon(x1, y1, x2, y2, x3, y3, x4, y4, fill=color, stipple=stipple)
 
     def draw_small_rectangles(self, center, size, angle,panel):
+        intersection_count = 0
         panel_power,panel_width,panel_height = panel
         # Fixed size for small rectangles
         small_rect_width = panel_width/self.scale_factor # unit: meter/self.scale_factor
@@ -287,9 +317,9 @@ class AreaMeasurementApp:
                 # Calculate the rotated offset
                 x_offset = i * (small_rect_width + gap_width)
                 if (j % 2)==0:
-                    y_offset = j * (small_rect_height + gap_height) + big_gap_height/2
-                else:
                     y_offset = j * (small_rect_height + gap_height) - small_gap_height/2
+                else:
+                    y_offset = j * (small_rect_height + gap_height) + big_gap_height/2
 
                 rotated_x1, rotated_y1 = self.rotate_point(
                     center[0] - w / 2 + small_rect_width + x_offset,
@@ -299,18 +329,67 @@ class AreaMeasurementApp:
                     angle
                 )
                 each_center = (rotated_x1,rotated_y1)
+                small_rect = each_center, small_size, angle
 
-                self.draw_rotated_rectangle(each_center, small_size, angle,color="darkblue",stipple=None)
+                if self.prohibited_points:
+                    prohibited_points = np.array(self.prohibited_points[-4:], dtype=np.int32)
+
+                    # Find the minimum area rectangle using OpenCV
+                    prohibited_rect = cv2.minAreaRect(prohibited_points)
+                    intersection = cv2.rotatedRectangleIntersection(small_rect,prohibited_rect)
+                    # print(intersection)
+                    if intersection[1] is not None:
+                        # self.draw_rotated_rectangle(each_center, small_size, angle,color="green",stipple=None)
+                        intersection_count = intersection_count + 1
+                    else:
+                        self.draw_rotated_rectangle(each_center, small_size, angle,color="midnight blue",stipple=None)
+                else:
+                    self.draw_rotated_rectangle(each_center, small_size, angle,color="midnight blue",stipple=None)
 
         x1, y1 = center[0] - 4, center[1] - 4
         x2, y2 = center[0] + 4, center[1] + 4
         self.canvas.create_oval(x1, y1, x2, y2, fill="green")
 
         # Update the label to display the total number of rectangles
-        num_rectangles_total = num_rectangles_horizontal * num_rectangles_vertical
+        num_rectangles_total = num_rectangles_horizontal * num_rectangles_vertical - intersection_count
         kW_total = panel_power * num_rectangles_total /1000
         self.total_rectangles_label.config(text=f"panel:{num_rectangles_horizontal}x{num_rectangles_vertical}= {num_rectangles_total} , kWp: {kW_total:.2f} kW, Helio:({kW_total*0.75:.2f} kW)")
 
+    def check_hit_detection(self, rect1, rect2):
+        # Check for precise intersection between two rotated rectangles
+
+        def project(rect, axis):
+            # Project the rectangle onto the axis and return the min and max values
+            center, size, angle = rect
+            points = cv2.boxPoints(((center[0], center[1]), (size[0], size[1]), angle))
+            return np.dot(points, axis), np.dot(points, axis)
+
+
+        def axis_test(v0, v1, u0, u1):
+            # Perform the SAT axis test
+            return not (v1 < u0 or u1 < v0)
+
+        # Extract relevant information from the rectangles
+        center1, size1, angle1 = rect1
+        center2, size2, angle2 = rect2
+
+        # Calculate the axes for each rectangle
+        axes = [
+            (np.cos(angle1), np.sin(angle1)),
+            (np.cos(angle1 + np.pi / 2), np.sin(angle1 + np.pi / 2)),
+            (np.cos(angle2), np.sin(angle2)),
+            (np.cos(angle2 + np.pi / 2), np.sin(angle2 + np.pi / 2))
+        ]
+
+        # Project rectangles onto each axis and perform the SAT axis tests
+        for axis in axes:
+            v0, v1 = project(rect1, axis)
+            u0, u1 = project(rect2, axis)
+
+            if not axis_test(v0, v1, u0, u1):
+                return False  # No intersection on this axis, rectangles do not intersect
+
+        return True  # Rectangles intersect on all axes, there is an intersection
 
     def rotate_point(self, x, y, center_x, center_y, angle):
         # Rotate a point (x, y) around a center (center_x, center_y) by a given angle (in degrees)
@@ -328,7 +407,7 @@ class AreaMeasurementApp:
             if num_points>0:
                 # Calculate approximate rectangle properties
                 # Use the last four points to calculate rectangle properties
-                x_coords, y_coords = zip(*self.points[-4:])
+                # x_coords, y_coords = zip(*self.points[-4:])
                 points = np.array(self.points[-4:], dtype=np.int32)
 
                 # Find the minimum area rectangle using OpenCV
