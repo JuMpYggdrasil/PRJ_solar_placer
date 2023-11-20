@@ -10,7 +10,7 @@ import math
 # Define panel_info as a global variable
 # Each entry contains (power, width, height) information for different solar panels
 panel_info = {
-    "Jinko 550W": (550, 2.278, 1.134),  # Default
+    "Jinko 550W": (550, 2.278, 1.134),  # Default JKM530-550M-72HL4
     "Trina 300W": (300, 1.956, 0.992),
     "Jinko 350W": (350, 1.956, 0.992),
     "Jinko 500W": (500, 1.956, 1.310),
@@ -42,6 +42,10 @@ class AreaMeasurementApp:
         frame4 = tk.Frame(self.master)
         frame4.pack(side=tk.TOP)
 
+        # Add a button to browse and load an image
+        self.browse_button = tk.Button(frame4, text="Browse Image", command=self.browse_image)
+        self.browse_button.pack(side=tk.LEFT)
+
         # Entry widget for gap_width
         tk.Label(frame4, text="Gap Width (m):").pack(side=tk.LEFT)
         self.gap_width_entry = tk.Entry(frame4)
@@ -59,6 +63,13 @@ class AreaMeasurementApp:
         self.big_gap_height_entry = tk.Entry(frame4)
         self.big_gap_height_entry.insert(0, "0.6")  # Set default value
         self.big_gap_height_entry.pack(side=tk.LEFT)
+
+        # Entry widget for big_gap_height
+        tk.Label(frame4, text="Setback (m):").pack(side=tk.LEFT)
+        self.setback_entry = tk.Entry(frame4)
+        self.setback_entry.insert(0, "0")  # Set default value
+        self.setback_entry.pack(side=tk.LEFT)
+
         
         # Create a frame for the first line (area_label and distance_label)
         frame1 = tk.Frame(self.master)
@@ -88,9 +99,7 @@ class AreaMeasurementApp:
         frame2 = tk.Frame(self.master)
         frame2.pack(side=tk.TOP)
 
-        # Add a button to browse and load an image
-        self.browse_button = tk.Button(frame2, text="Browse Image", command=self.browse_image)
-        self.browse_button.pack(side=tk.LEFT)
+        
 
         # Create a Combobox for panel types
         panel_types = list(panel_info.keys())
@@ -99,7 +108,7 @@ class AreaMeasurementApp:
         self.panel_type_combobox.pack(side=tk.LEFT)
 
         # Create a button to calculate rectangle properties based on the selected panel type
-        self.calculate_button = tk.Button(frame2, text="Calculate", command=self.calculate_rectangle, state=tk.DISABLED)
+        self.calculate_button = tk.Button(frame2, text="PV Panel", command=self.calculate_rectangle, state=tk.DISABLED)
         self.calculate_button.pack(side=tk.LEFT)
 
         self.keepout_button = tk.Button(frame2, text="Keepout", command=self.add_keepout)
@@ -179,7 +188,7 @@ class AreaMeasurementApp:
         if num_points <= 2:
             self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="purple")
         else:
-            self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="red")
+            self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="blue")
 
         # If the first two points are clicked, prompt the user to enter the scale factor
         if num_points == 2:
@@ -240,7 +249,7 @@ class AreaMeasurementApp:
             if index < 2:
                 self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="purple")
             else:
-                self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="red")
+                self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="blue")
 
         # Draw prohibited areas
         for area in self.prohibited_points:
@@ -253,7 +262,7 @@ class AreaMeasurementApp:
             # Draw prohibited areas
             for area in prohibited_permanent_points:
                 x, y = area
-                self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="magenta")
+                self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="red")
                 
                 self.canvas.create_polygon(prohibited_permanent_points[0][0], prohibited_permanent_points[0][1], prohibited_permanent_points[1][0], prohibited_permanent_points[1][1], prohibited_permanent_points[2][0], prohibited_permanent_points[2][1], prohibited_permanent_points[3][0], prohibited_permanent_points[3][1], fill="red", stipple="gray50")
 
@@ -287,11 +296,11 @@ class AreaMeasurementApp:
         distance_in_meters = pixel_distance * self.scale_factor
         return distance_in_meters
 
-    def draw_rotated_rectangle(self, center, size, angle, color="lightblue", stipple="gray50"):
+    def draw_rotated_rectangle(self, center, size, angle, color="lightblue", stipple="gray50",scaled=1):
         # Calculate the coordinates of the four corners of the rotated rectangle
         w, h = size
-        w = w*0.95
-        h = h*0.95
+        w = w*scaled
+        h = h*scaled
         angle_rad = math.radians(angle)
         cos_a = math.cos(angle_rad)
         sin_a = math.sin(angle_rad)
@@ -336,9 +345,9 @@ class AreaMeasurementApp:
                 # Calculate the rotated offset
                 x_offset = i * (small_rect_width + gap_width)
                 if (j % 2)==0:
-                    y_offset = j * (small_rect_height + gap_height) - small_gap_height/2
+                    y_offset = j * (small_rect_height + gap_height) + big_gap_height
                 else:
-                    y_offset = j * (small_rect_height + gap_height) + big_gap_height/2
+                    y_offset = j * (small_rect_height + gap_height) - small_gap_height
 
                 rotated_x1, rotated_y1 = self.rotate_point(
                     center[0] - w / 2 + small_rect_width + x_offset,
@@ -366,9 +375,9 @@ class AreaMeasurementApp:
                         else:
                             agree_count = agree_count + 1
                     if agree_count==len(self.prohibited_permanent_sets):
-                        self.draw_rotated_rectangle(each_center, small_size, angle,color="midnight blue",stipple=None)
+                        self.draw_rotated_rectangle(each_center, small_size, angle,color="midnight blue",stipple=None,scaled=0.95)
                 else:
-                    self.draw_rotated_rectangle(each_center, small_size, angle,color="medium blue",stipple=None)
+                    self.draw_rotated_rectangle(each_center, small_size, angle,color="midnight blue",stipple=None,scaled=0.95)
 
         x1, y1 = center[0] - 4, center[1] - 4
         x2, y2 = center[0] + 4, center[1] + 4
@@ -377,7 +386,7 @@ class AreaMeasurementApp:
         # Update the label to display the total number of rectangles
         num_rectangles_total = num_rectangles_horizontal * num_rectangles_vertical - intersection_count
         kW_total = panel_power * num_rectangles_total /1000
-        self.total_rectangles_label.config(text=f"panel:{num_rectangles_horizontal}x{num_rectangles_vertical}= {num_rectangles_total} , kWp: {kW_total:.2f} kW, Helio:({kW_total*0.75:.2f} kW)")
+        self.total_rectangles_label.config(text=f"panel:{num_rectangles_horizontal}x{num_rectangles_vertical}= {num_rectangles_total} , kWp: {kW_total:.2f} kW, Helio:({kW_total*0.89:.2f} kW)")#88% 
 
     def check_hit_detection(self, rect1, rect2):
         # Check for precise intersection between two rotated rectangles
@@ -437,8 +446,16 @@ class AreaMeasurementApp:
                 # Find the minimum area rectangle using OpenCV
                 rect = cv2.minAreaRect(points)
 
-                # Unpack the rectangle properties
+                # Draw boundary
                 center, size, angle = rect
+                # Draw the rotated rectangle on the canvas
+                self.draw_rotated_rectangle(center, size, angle,color="gold")
+                
+
+                # Draw boundary with setback
+                center, size, angle = rect
+                setback_length = float(self.setback_entry.get()) / self.scale_factor
+                size = tuple(s - 2 * setback_length for s in size)
                 # Draw the rotated rectangle on the canvas
                 self.draw_rotated_rectangle(center, size, angle)
                 self.draw_small_rectangles(center, size, angle,panel)
