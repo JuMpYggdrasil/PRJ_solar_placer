@@ -70,7 +70,12 @@ class AreaMeasurementApp:
         self.setback_entry.insert(0, "0")  # Set default value
         self.setback_entry.pack(side=tk.LEFT)
 
-        
+        # Checkbox for prohibiting points
+        self.rotate_var = tk.IntVar()
+        self.rotate_checkbox = tk.Checkbutton(frame4, text="panel rotation", variable=self.rotate_var, command=self.toggle_panel_rotation)
+        self.rotate_checkbox.pack(side=tk.LEFT)
+
+
         # Create a frame for the first line (area_label and distance_label)
         frame1 = tk.Frame(self.master)
         frame1.pack(side=tk.TOP)
@@ -139,6 +144,16 @@ class AreaMeasurementApp:
             self.load_image(file_path)
             # Make the browse_button invisible
             self.browse_button.pack_forget()
+
+    def toggle_panel_rotation(self):
+        if self.rotate_var.get() == 1:
+            # Enable prohibiting points functionality
+            # You can add code here to handle what happens when the checkbox is checked
+            pass
+        else:
+            # Disable prohibiting points functionality
+            # You can add code here to handle what happens when the checkbox is unchecked
+            pass
 
 
     def load_image(self, image_path):
@@ -323,9 +338,14 @@ class AreaMeasurementApp:
     def draw_small_rectangles(self, center, size, angle,panel):
         intersection_count = 0
         panel_power,panel_width,panel_height = panel
+
         # Fixed size for small rectangles
-        small_rect_width = panel_width/self.scale_factor # unit: meter/self.scale_factor
-        small_rect_height = panel_height/self.scale_factor
+        if self.rotate_var.get()==1:
+            small_rect_width = panel_width/self.scale_factor # unit: meter/self.scale_factor
+            small_rect_height = panel_height/self.scale_factor
+        else:
+            small_rect_width = panel_height/self.scale_factor # unit: meter/self.scale_factor
+            small_rect_height = panel_width/self.scale_factor
         small_size = (small_rect_width,small_rect_height)
 
         # Inside the draw_small_rectangles method
@@ -386,7 +406,7 @@ class AreaMeasurementApp:
         # Update the label to display the total number of rectangles
         num_rectangles_total = num_rectangles_horizontal * num_rectangles_vertical - intersection_count
         kW_total = panel_power * num_rectangles_total /1000
-        self.total_rectangles_label.config(text=f"panel:{num_rectangles_horizontal}x{num_rectangles_vertical}= {num_rectangles_total} , kWp: {kW_total:.2f} kW, Helio:({kW_total*0.89:.2f} kW)")#88% 
+        self.total_rectangles_label.config(text=f"panel:{num_rectangles_horizontal}x{num_rectangles_vertical}= {num_rectangles_total} , kWp: {kW_total:.2f} kW")#88% 
 
     def check_hit_detection(self, rect1, rect2):
         # Check for precise intersection between two rotated rectangles
