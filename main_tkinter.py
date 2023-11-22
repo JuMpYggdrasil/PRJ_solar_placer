@@ -100,6 +100,9 @@ class AreaMeasurementApp:
         # Bind right-click event for creating prohibited areas
         self.canvas.bind("<Button-3>", self.on_canvas_right_click)
 
+        # Bind mouse movement event for the canvas
+        self.canvas.bind("<Motion>", self.on_canvas_motion)
+
         # Create a frame for the second line (buttons)
         frame2 = tk.Frame(self.master)
         frame2.pack(side=tk.TOP)
@@ -134,6 +137,29 @@ class AreaMeasurementApp:
         self.total_rectangles_label = tk.Label(frame3, text="Total Rectangles: 0")
         self.total_rectangles_label.pack(side=tk.LEFT)
         # Inside the __init__ method
+
+    def on_canvas_motion(self, event):
+        if len(self.points) < 6:
+            self.reload_canvas()
+        # Code to execute when the mouse moves over the canvas
+        x, y = event.x, event.y
+        # print(f"Mouse moved to coordinates: ({x}, {y})")
+        if len(self.points) < 2:
+            self.canvas.create_oval(x - 4, y - 4, x + 4, y + 4, fill="", outline="purple", width=2)
+
+        if len(self.points) >= 2 and len(self.points) < 6:
+            self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="green2")
+        
+        if len(self.points) > 2 and len(self.points) < 6:
+            for i in range(2,len(self.points)-1):
+                self.canvas.create_line(self.points[i][0], self.points[i][1], self.points[i + 1][0], self.points[i + 1][1], fill="orange")
+
+            # Draw a line connecting the last point to the current mouse coordinates
+            self.canvas.create_line(self.points[-1][0], self.points[-1][1], x, y, fill="orange")
+            self.canvas.create_line(self.points[2][0], self.points[2][1], x, y, fill="orange")
+
+
+
 
     def browse_image(self):
         # Open a file dialog to select an image file
@@ -198,6 +224,7 @@ class AreaMeasurementApp:
 
     def on_canvas_click(self, event):
         x, y = event.x, event.y
+        print(x,y)
         self.points.append((x, y))
         num_points = len(self.points)
         if num_points <= 2:
@@ -214,6 +241,8 @@ class AreaMeasurementApp:
                 self.scale_factor = d_val / pixel_distance
                 print("scale_factor: ")
                 print(self.scale_factor)
+                # Remove the binding for mouse wheel event
+                self.canvas.unbind("<MouseWheel>")
             else:
                 # If the user cancels, clear the points and canvas and return
                 self.clear_all_canvas()
@@ -243,8 +272,16 @@ class AreaMeasurementApp:
             self.zoom_factor *= 1.1
         else:
             self.zoom_factor /= 1.1
-
+        print("zoom_factor: ")
+        print(self.zoom_factor)
         self.reload_canvas()
+        # # Scale all points by self.zoom_factor
+        # scaled_points = [(int(x * self.zoom_factor), int(y * self.zoom_factor)) for x, y in self.points]
+
+        # for prohibited_permanent_points in self.prohibited_permanent_sets:
+            # scaled_prohibited_permanent_points = [(int(x * self.zoom_factor), int(y * self.zoom_factor)) for x, y in prohibited_permanent_points]
+
+
 
     def reload_canvas(self):
 
@@ -259,28 +296,36 @@ class AreaMeasurementApp:
         self.canvas.delete("all")
         self.canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_image)
 
+
         for index,point in enumerate(self.points):
             x, y = point
             if index < 2:
                 self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="purple")
+                
             else:
                 self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="blue")
+
+        if len(self.points) == 6:
+            for i in range(2,len(self.points)-1):
+                x0,y0 = self.points[i]
+                x1,y1 = self.points[i+1]
+                self.canvas.create_line(x0, y0,x1, y1, fill="orange")
+            self.canvas.create_line(self.points[2][0], self.points[2][1], self.points[5][0], self.points[5][1], fill="orange")
 
         # Draw prohibited areas
         for area in self.prohibited_points:
             x, y = area
             self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="pink")
-            # if len(self.prohibited_points)==4:
-            #     self.canvas.create_polygon(self.prohibited_points[0][0], self.prohibited_points[0][1], self.prohibited_points[1][0], self.prohibited_points[1][1], self.prohibited_points[2][0], self.prohibited_points[2][1], self.prohibited_points[3][0], self.prohibited_points[3][1], fill="lightyellow", stipple="gray50")
-
+        
         for n,prohibited_permanent_points in enumerate(self.prohibited_permanent_sets):
             # Draw prohibited areas
             for area in prohibited_permanent_points:
                 x, y = area
                 self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="red")
                 
-                self.canvas.create_polygon(prohibited_permanent_points[0][0], prohibited_permanent_points[0][1], prohibited_permanent_points[1][0], prohibited_permanent_points[1][1], prohibited_permanent_points[2][0], prohibited_permanent_points[2][1], prohibited_permanent_points[3][0], prohibited_permanent_points[3][1], fill="red", stipple="gray50")
+            self.canvas.create_polygon(prohibited_permanent_points[0][0], prohibited_permanent_points[0][1], prohibited_permanent_points[1][0], prohibited_permanent_points[1][1], prohibited_permanent_points[2][0], prohibited_permanent_points[2][1], prohibited_permanent_points[3][0], prohibited_permanent_points[3][1], fill="red", stipple="gray50")
 
+        
 
     def calculate_area(self):
         # Shoelace formula to calculate the area of a polygon
@@ -360,18 +405,21 @@ class AreaMeasurementApp:
         num_rectangles_horizontal = int((w / (small_rect_width + gap_width)))  # Adjust the spacing as needed
         num_rectangles_vertical = int((h / (small_rect_height + gap_height)))  # Adjust the spacing as needed
 
+        space_width = w - (num_rectangles_horizontal*(small_rect_width + gap_width) - gap_width)
+        space_height = h - (num_rectangles_vertical*(small_rect_height + gap_height) - gap_height)
+
         for i in range(num_rectangles_horizontal):
             for j in range(num_rectangles_vertical):
                 # Calculate the rotated offset
                 x_offset = i * (small_rect_width + gap_width)
                 if (j % 2)==0:
-                    y_offset = j * (small_rect_height + gap_height) + big_gap_height
+                    y_offset = j * (small_rect_height + gap_height)
                 else:
-                    y_offset = j * (small_rect_height + gap_height) - small_gap_height
+                    y_offset = j * (small_rect_height + gap_height) + (small_gap_height - big_gap_height)/2
 
                 rotated_x1, rotated_y1 = self.rotate_point(
-                    center[0] - w / 2 + small_rect_width + x_offset,
-                    center[1] - h / 2 + small_rect_height+ y_offset,
+                    center[0] - w/2 + small_rect_width/2 + gap_width/2 + space_width/2 + x_offset,
+                    center[1] - h/2 + small_rect_height/2 + gap_height/2 + space_height/2 + y_offset,
                     center[0],
                     center[1],
                     angle
@@ -382,10 +430,10 @@ class AreaMeasurementApp:
 
                 if self.prohibited_permanent_sets:
                     for prohibited_permanent_points in self.prohibited_permanent_sets:
-                        prohibited__points = np.array(prohibited_permanent_points[-4:], dtype=np.int32)
+                        prohibited_points = np.array(prohibited_permanent_points[-4:], dtype=np.int32)
 
                         # Find the minimum area rectangle using OpenCV
-                        prohibited_rect = cv2.minAreaRect(prohibited__points)
+                        prohibited_rect = cv2.minAreaRect(prohibited_points)
                         intersection = cv2.rotatedRectangleIntersection(small_rect,prohibited_rect)
                         
 
@@ -458,6 +506,7 @@ class AreaMeasurementApp:
         if panel:
             num_points = len(self.points)
             if num_points>0:
+                self.reload_canvas()
                 # Calculate approximate rectangle properties
                 # Use the last four points to calculate rectangle properties
                 # x_coords, y_coords = zip(*self.points[-4:])
