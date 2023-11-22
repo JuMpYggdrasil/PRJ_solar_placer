@@ -119,7 +119,7 @@ class AreaMeasurementApp:
         self.calculate_button = tk.Button(frame2, text="PV Panel", command=self.calculate_rectangle, state=tk.DISABLED)
         self.calculate_button.pack(side=tk.LEFT)
 
-        self.keepout_button = tk.Button(frame2, text="Keepout", command=self.add_keepout)
+        self.keepout_button = tk.Button(frame2, text="Keepout", command=self.add_keepout, state=tk.DISABLED)
         self.keepout_button.pack(side=tk.LEFT)
 
         self.clear_button = tk.Button(frame2, text="Clear", command=self.clear_canvas)
@@ -220,6 +220,8 @@ class AreaMeasurementApp:
         self.prohibited_points.append((x, y))
         if len(self.prohibited_points) > 4:
             self.prohibited_points.pop(0)
+        if len(self.prohibited_points)== 4:
+            self.keepout_button["state"] = tk.NORMAL
         self.reload_canvas()
 
     def on_canvas_click(self, event):
@@ -323,7 +325,8 @@ class AreaMeasurementApp:
                 x, y = area
                 self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="red")
                 
-            self.canvas.create_polygon(prohibited_permanent_points[0][0], prohibited_permanent_points[0][1], prohibited_permanent_points[1][0], prohibited_permanent_points[1][1], prohibited_permanent_points[2][0], prohibited_permanent_points[2][1], prohibited_permanent_points[3][0], prohibited_permanent_points[3][1], fill="red", stipple="gray50")
+            if len(prohibited_permanent_points)>=4:
+                self.canvas.create_polygon(prohibited_permanent_points[0][0], prohibited_permanent_points[0][1], prohibited_permanent_points[1][0], prohibited_permanent_points[1][1], prohibited_permanent_points[2][0], prohibited_permanent_points[2][1], prohibited_permanent_points[3][0], prohibited_permanent_points[3][1], fill="red", stipple="gray50")
 
         
 
