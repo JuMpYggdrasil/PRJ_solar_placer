@@ -226,7 +226,6 @@ class AreaMeasurementApp:
 
     def on_canvas_click(self, event):
         x, y = event.x, event.y
-        print(x,y)
         self.points.append((x, y))
         num_points = len(self.points)
         if num_points <= 2:
@@ -241,8 +240,8 @@ class AreaMeasurementApp:
             d_val = simpledialog.askfloat("Scale Factor", "Enter the scale factor (pixels to meters):")
             if d_val is not None:
                 self.scale_factor = d_val / pixel_distance
-                print("scale_factor: ")
-                print(self.scale_factor)
+                # print("scale_factor: ")
+                # print(self.scale_factor)
                 # Remove the binding for mouse wheel event
                 self.canvas.unbind("<MouseWheel>")
             else:
@@ -274,8 +273,8 @@ class AreaMeasurementApp:
             self.zoom_factor *= 1.1
         else:
             self.zoom_factor /= 1.1
-        print("zoom_factor: ")
-        print(self.zoom_factor)
+        # print("zoom_factor: ")
+        # print(self.zoom_factor)
         self.reload_canvas()
         # # Scale all points by self.zoom_factor
         # scaled_points = [(int(x * self.zoom_factor), int(y * self.zoom_factor)) for x, y in self.points]
@@ -533,7 +532,8 @@ class AreaMeasurementApp:
                 self.draw_small_rectangles(center, size, angle,panel)
         else:
             # Handle the case when the selected panel type is not found
-            print("Selected panel type not found")
+            # print("Selected panel type not found")
+            pass
 
 
 def main():
