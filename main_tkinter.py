@@ -17,8 +17,10 @@ panel_info = {
     "Jinko 600W": (600, 2.465, 1.134)
 }
 
-class AreaMeasurementApp:
+class SolarPlanelPlacerApp:
     def __init__(self, master):
+        self.original_image = None  # Initialize the attribute
+        self.Azimuth = 0
         # Store clicked points
         self.points = []
         self.prohibited_points = []
@@ -27,6 +29,8 @@ class AreaMeasurementApp:
 
         # Initialize distance_labels list
         self.distance_labels = []
+
+        self.already_draw_panel = 0
 
         self.master = master
         width = self.master.winfo_screenwidth()
@@ -54,15 +58,15 @@ class AreaMeasurementApp:
 
         # Entry widget for small_gap_height
         tk.Label(frame4, text="Gap Height (m):").pack(side=tk.LEFT)
-        self.small_gap_height_entry = tk.Entry(frame4)
-        self.small_gap_height_entry.insert(0, "0.2")  # Set default value
-        self.small_gap_height_entry.pack(side=tk.LEFT)
+        self.gap_height_entry = tk.Entry(frame4)
+        self.gap_height_entry.insert(0, "0.2")  # Set default value
+        self.gap_height_entry.pack(side=tk.LEFT)
         
         # Entry widget for big_gap_height
         tk.Label(frame4, text="Walk Gap (m):").pack(side=tk.LEFT)
-        self.big_gap_height_entry = tk.Entry(frame4)
-        self.big_gap_height_entry.insert(0, "0.6")  # Set default value
-        self.big_gap_height_entry.pack(side=tk.LEFT)
+        self.walk_gap_entry = tk.Entry(frame4)
+        self.walk_gap_entry.insert(0, "0.6")  # Set default value
+        self.walk_gap_entry.pack(side=tk.LEFT)
 
         # Entry widget for big_gap_height
         tk.Label(frame4, text="Setback (m):").pack(side=tk.LEFT)
@@ -70,10 +74,22 @@ class AreaMeasurementApp:
         self.setback_entry.insert(0, "0")  # Set default value
         self.setback_entry.pack(side=tk.LEFT)
 
+        
+        # Bind the <FocusOut> event to the callback function
+        self.gap_width_entry.bind("<FocusOut>", self.entry_changed)
+        self.gap_height_entry.bind("<FocusOut>", self.entry_changed)
+        self.walk_gap_entry.bind("<FocusOut>", self.entry_changed)
+        self.setback_entry.bind("<FocusOut>", self.entry_changed)
+
         # Checkbox for prohibiting points
-        self.rotate_var = tk.IntVar()
-        self.rotate_checkbox = tk.Checkbutton(frame4, text="panel rotation", variable=self.rotate_var, command=self.toggle_panel_rotation)
-        self.rotate_checkbox.pack(side=tk.LEFT)
+        self.panel_rotate_var = tk.IntVar()
+        self.panel_rotate_checkbox = tk.Checkbutton(frame4, text="panel rotation", variable=self.panel_rotate_var, command=self.toggle_panel_rotation)
+        self.panel_rotate_checkbox.pack(side=tk.LEFT)
+
+        # Checkbox for prohibiting points
+        self.walk_gap_rotate_var = tk.IntVar()
+        self.walk_gap_rotate_checkbox = tk.Checkbutton(frame4, text="walk gap rotation", variable=self.walk_gap_rotate_var, command=self.toggle_walk_gap_rotation)
+        self.walk_gap_rotate_checkbox.pack(side=tk.LEFT)
 
 
         # Create a frame for the first line (area_label and distance_label)
@@ -160,6 +176,20 @@ class AreaMeasurementApp:
 
 
 
+    def entry_changed(self, event):
+        # This function will be called when the entry loses focus
+        # You can access the entry widget using 'event.widget'
+        entry_widget = event.widget
+
+        # Get the current value from the entry widget
+        current_value = entry_widget.get()
+
+        # Do something with the current value, e.g., print it
+        # print(f"Value changed to: {current_value}")
+
+        if self.already_draw_panel == 1:
+            self.calculate_rectangle()
+
 
     def browse_image(self):
         # Open a file dialog to select an image file
@@ -172,7 +202,7 @@ class AreaMeasurementApp:
             self.browse_button.pack_forget()
 
     def toggle_panel_rotation(self):
-        if self.rotate_var.get() == 1:
+        if self.panel_rotate_var.get() == 1:
             # Enable prohibiting points functionality
             # You can add code here to handle what happens when the checkbox is checked
             pass
@@ -180,6 +210,23 @@ class AreaMeasurementApp:
             # Disable prohibiting points functionality
             # You can add code here to handle what happens when the checkbox is unchecked
             pass
+
+        if self.already_draw_panel == 1:
+            self.calculate_rectangle()
+
+    def toggle_walk_gap_rotation(self):
+        if self.walk_gap_rotate_var.get() == 1:
+            # Enable prohibiting points functionality
+            # You can add code here to handle what happens when the checkbox is checked
+            pass
+        else:
+            # Disable prohibiting points functionality
+            # You can add code here to handle what happens when the checkbox is unchecked
+            pass
+
+        if self.already_draw_panel == 1:
+            self.calculate_rectangle()
+
 
 
     def load_image(self, image_path):
@@ -210,6 +257,8 @@ class AreaMeasurementApp:
         self.prohibited_points = []
         self.prohibited_permanent_sets = []
         self.reload_canvas()
+        self.calculate_button["state"] = tk.DISABLED
+        self.keepout_button["state"] = tk.DISABLED
 
     def add_keepout(self):
         self.prohibited_permanent_sets.append(self.prohibited_points.copy())
@@ -285,47 +334,47 @@ class AreaMeasurementApp:
 
 
     def reload_canvas(self):
+        if self.original_image is not None:
+            # Resize the image based on the zoom factor
+            width = int(self.original_image.width * self.zoom_factor)
+            height = int(self.original_image.height * self.zoom_factor)
+            resized_image = self.original_image.resize((width, height), Image.Resampling.LANCZOS)
+            self.tk_image = ImageTk.PhotoImage(resized_image)
 
-        # Resize the image based on the zoom factor
-        width = int(self.original_image.width * self.zoom_factor)
-        height = int(self.original_image.height * self.zoom_factor)
-        resized_image = self.original_image.resize((width, height), Image.Resampling.LANCZOS)
-        self.tk_image = ImageTk.PhotoImage(resized_image)
-
-        # Update the canvas with the resized image
-        self.canvas.config(width=width, height=height)
-        self.canvas.delete("all")
-        self.canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_image)
+            # Update the canvas with the resized image
+            self.canvas.config(width=width, height=height)
+            self.canvas.delete("all")
+            self.canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_image)
 
 
-        for index,point in enumerate(self.points):
-            x, y = point
-            if index < 2:
-                self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="purple")
-                
-            else:
-                self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="blue")
+            for index,point in enumerate(self.points):
+                x, y = point
+                if index < 2:
+                    self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="purple")
+                    
+                else:
+                    self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="blue")
 
-        if len(self.points) == 6:
-            for i in range(2,len(self.points)-1):
-                x0,y0 = self.points[i]
-                x1,y1 = self.points[i+1]
-                self.canvas.create_line(x0, y0,x1, y1, fill="orange")
-            self.canvas.create_line(self.points[2][0], self.points[2][1], self.points[5][0], self.points[5][1], fill="orange")
+            if len(self.points) == 6:
+                for i in range(2,len(self.points)-1):
+                    x0,y0 = self.points[i]
+                    x1,y1 = self.points[i+1]
+                    self.canvas.create_line(x0, y0,x1, y1, fill="orange")
+                self.canvas.create_line(self.points[2][0], self.points[2][1], self.points[5][0], self.points[5][1], fill="orange")
 
-        # Draw prohibited areas
-        for area in self.prohibited_points:
-            x, y = area
-            self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="pink")
-        
-        for n,prohibited_permanent_points in enumerate(self.prohibited_permanent_sets):
             # Draw prohibited areas
-            for area in prohibited_permanent_points:
+            for area in self.prohibited_points:
                 x, y = area
-                self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="red")
-                
-            if len(prohibited_permanent_points)>=4:
-                self.canvas.create_polygon(prohibited_permanent_points[0][0], prohibited_permanent_points[0][1], prohibited_permanent_points[1][0], prohibited_permanent_points[1][1], prohibited_permanent_points[2][0], prohibited_permanent_points[2][1], prohibited_permanent_points[3][0], prohibited_permanent_points[3][1], fill="red", stipple="gray50")
+                self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="pink")
+            
+            for n,prohibited_permanent_points in enumerate(self.prohibited_permanent_sets):
+                # Draw prohibited areas
+                for area in prohibited_permanent_points:
+                    x, y = area
+                    self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="red")
+                    
+                if len(prohibited_permanent_points)>=4:
+                    self.canvas.create_polygon(prohibited_permanent_points[0][0], prohibited_permanent_points[0][1], prohibited_permanent_points[1][0], prohibited_permanent_points[1][1], prohibited_permanent_points[2][0], prohibited_permanent_points[2][1], prohibited_permanent_points[3][0], prohibited_permanent_points[3][1], fill="red", stipple="gray50")
 
         
 
@@ -387,7 +436,7 @@ class AreaMeasurementApp:
         panel_power,panel_width,panel_height = panel
 
         # Fixed size for small rectangles
-        if self.rotate_var.get()==1:
+        if self.panel_rotate_var.get()==1:
             small_rect_width = panel_width/self.scale_factor # unit: meter/self.scale_factor
             small_rect_height = panel_height/self.scale_factor
         else:
@@ -396,10 +445,23 @@ class AreaMeasurementApp:
         small_size = (small_rect_width,small_rect_height)
 
         # Inside the draw_small_rectangles method
-        gap_width = float(self.gap_width_entry.get()) / self.scale_factor
-        big_gap_height = float(self.big_gap_height_entry.get()) / self.scale_factor
-        small_gap_height = float(self.small_gap_height_entry.get()) / self.scale_factor
-        gap_height = big_gap_height*1/2+small_gap_height*1/2
+        if self.walk_gap_rotate_var.get() == 1:
+            big_gap_width = float(self.walk_gap_entry.get()) / self.scale_factor
+            small_gap_width = float(self.gap_width_entry.get()) / self.scale_factor
+            gap_width = big_gap_width*1/2+small_gap_width*1/2
+
+            small_gap_height = float(self.gap_height_entry.get()) / self.scale_factor
+            big_gap_height = small_gap_height
+            gap_height = small_gap_height
+
+        else:
+            small_gap_width = float(self.gap_width_entry.get()) / self.scale_factor
+            big_gap_width = small_gap_width
+            gap_width = small_gap_width
+
+            big_gap_height = float(self.walk_gap_entry.get()) / self.scale_factor
+            small_gap_height = float(self.gap_height_entry.get()) / self.scale_factor
+            gap_height = big_gap_height*1/2+small_gap_height*1/2
 
         # Calculate the number of rectangles that can fit within the rotated rectangle
         w, h = size
@@ -413,7 +475,11 @@ class AreaMeasurementApp:
         for i in range(num_rectangles_horizontal):
             for j in range(num_rectangles_vertical):
                 # Calculate the rotated offset
-                x_offset = i * (small_rect_width + gap_width)
+                if (i % 2)==0:
+                    x_offset = i * (small_rect_width + gap_width)
+                else:
+                    x_offset = i * (small_rect_width + gap_width) + (small_gap_width - big_gap_width)/2
+                
                 if (j % 2)==0:
                     y_offset = j * (small_rect_height + gap_height)
                 else:
@@ -456,7 +522,7 @@ class AreaMeasurementApp:
         # Update the label to display the total number of rectangles
         num_rectangles_total = num_rectangles_horizontal * num_rectangles_vertical - intersection_count
         kW_total = panel_power * num_rectangles_total /1000
-        self.total_rectangles_label.config(text=f"panel:{num_rectangles_horizontal}x{num_rectangles_vertical}= {num_rectangles_total} , kWp: {kW_total:.2f} kW")#88% 
+        self.total_rectangles_label.config(text=f"panel:{num_rectangles_horizontal}x{num_rectangles_vertical}= {num_rectangles_total} , kWp: {kW_total:.2f} kW , Angle (deg): {self.Azimuth:.1f}")#88% 
 
     def check_hit_detection(self, rect1, rect2):
         # Check for precise intersection between two rotated rectangles
@@ -519,17 +585,21 @@ class AreaMeasurementApp:
 
                 # Draw boundary
                 center, size, angle = rect
+                self.Azimuth = 90-angle
                 # Draw the rotated rectangle on the canvas
-                self.draw_rotated_rectangle(center, size, angle,color="gold")
+                self.draw_rotated_rectangle(center, size, angle, color="gold")
                 
 
                 # Draw boundary with setback
-                center, size, angle = rect
+                center, size, angle = rect #  the angle value always lies between [-90,0) to X-axis
                 setback_length = float(self.setback_entry.get()) / self.scale_factor
                 size = tuple(s - 2 * setback_length for s in size)
                 # Draw the rotated rectangle on the canvas
                 self.draw_rotated_rectangle(center, size, angle)
                 self.draw_small_rectangles(center, size, angle,panel)
+                self.already_draw_panel = 1
+                
+
         else:
             # Handle the case when the selected panel type is not found
             # print("Selected panel type not found")
@@ -538,7 +608,7 @@ class AreaMeasurementApp:
 
 def main():
     root = tk.Tk()
-    app = AreaMeasurementApp(root)
+    app = SolarPlanelPlacerApp(root)
     root.mainloop()
 
 
