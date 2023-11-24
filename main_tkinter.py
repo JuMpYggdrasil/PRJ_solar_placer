@@ -40,7 +40,7 @@ class SolarPlanelPlacerApp:
         self.master.title("Solar Panel Estimation Tool")
 
         # Create Canvas
-        self.canvas = tk.Canvas(self.master)
+        self.canvas = tk.Canvas(self.master, width=0, height=0)
         self.canvas.pack()
 
         frame4 = tk.Frame(self.master)
@@ -286,6 +286,7 @@ class SolarPlanelPlacerApp:
         if num_points == 2:
             pixel_distance = ((self.points[-2][0] - self.points[-1][0]) ** 2 + (
                         self.points[-2][1] - self.points[-1][1]) ** 2) ** 0.5
+            pixel_distance = pixel_distance/2
             d_val = simpledialog.askfloat("Scale Factor", "Enter the scale factor (pixels to meters):")
             if d_val is not None:
                 self.scale_factor = d_val / pixel_distance
@@ -335,16 +336,28 @@ class SolarPlanelPlacerApp:
 
     def reload_canvas(self):
         if self.original_image is not None:
+            # Define the region of interest (ROI)
+            roi_width = 160
+            roi_height = 50
+
             # Resize the image based on the zoom factor
             width = int(self.original_image.width * self.zoom_factor)
             height = int(self.original_image.height * self.zoom_factor)
             resized_image = self.original_image.resize((width, height), Image.Resampling.LANCZOS)
             self.tk_image = ImageTk.PhotoImage(resized_image)
 
+            # Extract the region of interest from the resized image
+            roi_image = resized_image.crop((width - roi_width, height - roi_height, width, height))
+            double_roi_image = roi_image.resize((roi_width * 2, roi_height * 2), Image.Resampling.LANCZOS)
+            self.double_roi_tk_image = ImageTk.PhotoImage(double_roi_image)
+
             # Update the canvas with the resized image
             self.canvas.config(width=width, height=height)
             self.canvas.delete("all")
             self.canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_image)
+
+            # Display the region of interest at the bottom right corner
+            self.canvas.create_image(width, height, anchor=tk.SE, image=self.double_roi_tk_image)
 
 
             for index,point in enumerate(self.points):
