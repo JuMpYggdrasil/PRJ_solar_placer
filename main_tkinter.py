@@ -195,12 +195,13 @@ class SolarPlanelPlacerApp:
     def browse_image(self):
         # Open a file dialog to select an image file
         file_path = filedialog.askopenfilename(filetypes=[("Image files", "*.png;*.jpg;*.jpeg;*.gif")])
-
-        if file_path:
-            # Load the selected image
-            self.load_image(file_path)
-            # Make the browse_button invisible
-            self.browse_button.pack_forget()
+        if not file_path:
+            return
+        
+        # Load the selected image
+        self.load_image(file_path)
+        # Make the browse_button invisible
+        self.browse_button.pack_forget()
 
     def toggle_panel_rotation(self):
         if self.panel_rotate_var.get() == 1:
@@ -336,59 +337,61 @@ class SolarPlanelPlacerApp:
 
 
     def reload_canvas(self):
-        if self.original_image is not None:
-            # Define the region of interest (ROI)
-            roi_width = 160
-            roi_height = 50
+        if self.original_image is None:
+            return
+    
+        # Define the region of interest (ROI)
+        roi_width = 160
+        roi_height = 50
 
-            # Resize the image based on the zoom factor
-            width = int(self.original_image.width * self.zoom_factor)
-            height = int(self.original_image.height * self.zoom_factor)
-            resized_image = self.original_image.resize((width, height), Image.Resampling.LANCZOS)
-            self.tk_image = ImageTk.PhotoImage(resized_image)
+        # Resize the image based on the zoom factor
+        width = int(self.original_image.width * self.zoom_factor)
+        height = int(self.original_image.height * self.zoom_factor)
+        resized_image = self.original_image.resize((width, height), Image.Resampling.LANCZOS)
+        self.tk_image = ImageTk.PhotoImage(resized_image)
 
-            # Extract the region of interest from the resized image
-            roi_image = resized_image.crop((width - roi_width, height - roi_height, width, height))
-            double_roi_image = roi_image.resize((roi_width * 2, roi_height * 2), Image.Resampling.LANCZOS)
-            self.double_roi_tk_image = ImageTk.PhotoImage(double_roi_image)
+        # Extract the region of interest from the resized image
+        roi_image = resized_image.crop((width - roi_width, height - roi_height, width, height))
+        double_roi_image = roi_image.resize((roi_width * 2, roi_height * 2), Image.Resampling.LANCZOS)
+        self.double_roi_tk_image = ImageTk.PhotoImage(double_roi_image)
 
-            # Update the canvas with the resized image
-            self.canvas.config(width=width, height=height)
-            self.canvas.delete("all")
-            self.canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_image)
+        # Update the canvas with the resized image
+        self.canvas.config(width=width, height=height)
+        self.canvas.delete("all")
+        self.canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_image)
 
-            # Display the region of interest at the bottom right corner
-            self.canvas.create_image(width, height, anchor=tk.SE, image=self.double_roi_tk_image)
+        # Display the region of interest at the bottom right corner
+        self.canvas.create_image(width, height, anchor=tk.SE, image=self.double_roi_tk_image)
 
 
-            for index,point in enumerate(self.points):
-                x, y = point
-                if index < 2:
-                    self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="purple")
-                    
-                else:
-                    self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="blue")
+        for index,point in enumerate(self.points):
+            x, y = point
+            if index < 2:
+                self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="purple")
+                
+            else:
+                self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="blue")
 
-            if len(self.points) == 6:
-                for i in range(2,len(self.points)-1):
-                    x0,y0 = self.points[i]
-                    x1,y1 = self.points[i+1]
-                    self.canvas.create_line(x0, y0,x1, y1, fill="orange")
-                self.canvas.create_line(self.points[2][0], self.points[2][1], self.points[5][0], self.points[5][1], fill="orange")
+        if len(self.points) == 6:
+            for i in range(2,len(self.points)-1):
+                x0,y0 = self.points[i]
+                x1,y1 = self.points[i+1]
+                self.canvas.create_line(x0, y0,x1, y1, fill="orange")
+            self.canvas.create_line(self.points[2][0], self.points[2][1], self.points[5][0], self.points[5][1], fill="orange")
 
+        # Draw prohibited areas
+        for area in self.prohibited_points:
+            x, y = area
+            self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="pink")
+        
+        for n,prohibited_permanent_points in enumerate(self.prohibited_permanent_sets):
             # Draw prohibited areas
-            for area in self.prohibited_points:
+            for area in prohibited_permanent_points:
                 x, y = area
-                self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="pink")
-            
-            for n,prohibited_permanent_points in enumerate(self.prohibited_permanent_sets):
-                # Draw prohibited areas
-                for area in prohibited_permanent_points:
-                    x, y = area
-                    self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="red")
-                    
-                if len(prohibited_permanent_points)>=4:
-                    self.canvas.create_polygon(prohibited_permanent_points[0][0], prohibited_permanent_points[0][1], prohibited_permanent_points[1][0], prohibited_permanent_points[1][1], prohibited_permanent_points[2][0], prohibited_permanent_points[2][1], prohibited_permanent_points[3][0], prohibited_permanent_points[3][1], fill="red", stipple="gray50")
+                self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="red")
+                
+            if len(prohibited_permanent_points)>=4:
+                self.canvas.create_polygon(prohibited_permanent_points[0][0], prohibited_permanent_points[0][1], prohibited_permanent_points[1][0], prohibited_permanent_points[1][1], prohibited_permanent_points[2][0], prohibited_permanent_points[2][1], prohibited_permanent_points[3][0], prohibited_permanent_points[3][1], fill="red", stipple="gray50")
 
         
 
@@ -398,13 +401,10 @@ class SolarPlanelPlacerApp:
         num_points = len(self.points)
 
         for i in range(2, num_points - 1):
-            area_pixels += (
-                        self.points[i][0] * self.points[i + 1][1] - self.points[i + 1][0] * self.points[i][1])
+            area_pixels += (self.points[i][0] * self.points[i + 1][1] - self.points[i + 1][0] * self.points[i][1])
 
         # Add the last edge (closing the loop)
-        area_pixels += (
-                    self.points[num_points - 1][0] * self.points[2][1] - self.points[2][0] * self.points[
-                num_points - 1][1])
+        area_pixels += (self.points[num_points - 1][0] * self.points[2][1] - self.points[2][0] * self.points[num_points - 1][1])
 
         # Take the absolute value and divide by 2
         area_pixels = abs(area_pixels) / 2.0
@@ -584,40 +584,38 @@ class SolarPlanelPlacerApp:
     def calculate_rectangle(self):
         selected_panel_type = self.panel_type_var.get()
         panel = panel_info.get(selected_panel_type)
+        if not panel:
+            return
+        
+        num_points = len(self.points)
+        if num_points==0:
+            return
+        
+        self.reload_canvas()
+        # Calculate approximate rectangle properties
+        # Use the last four points to calculate rectangle properties
+        # x_coords, y_coords = zip(*self.points[-4:])
+        points = np.array(self.points[-4:], dtype=np.int32)
 
-        if panel:
-            num_points = len(self.points)
-            if num_points>0:
-                self.reload_canvas()
-                # Calculate approximate rectangle properties
-                # Use the last four points to calculate rectangle properties
-                # x_coords, y_coords = zip(*self.points[-4:])
-                points = np.array(self.points[-4:], dtype=np.int32)
+        # Find the minimum area rectangle using OpenCV
+        rect = cv2.minAreaRect(points)
 
-                # Find the minimum area rectangle using OpenCV
-                rect = cv2.minAreaRect(points)
+        # Draw boundary
+        center, size, angle = rect
+        self.Azimuth = 90-angle
+        # Draw the rotated rectangle on the canvas
+        self.draw_rotated_rectangle(center, size, angle, color="gold")
+        
 
-                # Draw boundary
-                center, size, angle = rect
-                self.Azimuth = 90-angle
-                # Draw the rotated rectangle on the canvas
-                self.draw_rotated_rectangle(center, size, angle, color="gold")
-                
+        # Draw boundary with setback
+        center, size, angle = rect #  the angle value always lies between [-90,0) to X-axis
+        setback_length = float(self.setback_entry.get()) / self.scale_factor
+        size = tuple(s - 2 * setback_length for s in size)
+        # Draw the rotated rectangle on the canvas
+        self.draw_rotated_rectangle(center, size, angle)
+        self.draw_small_rectangles(center, size, angle,panel)
+        self.already_draw_panel = 1
 
-                # Draw boundary with setback
-                center, size, angle = rect #  the angle value always lies between [-90,0) to X-axis
-                setback_length = float(self.setback_entry.get()) / self.scale_factor
-                size = tuple(s - 2 * setback_length for s in size)
-                # Draw the rotated rectangle on the canvas
-                self.draw_rotated_rectangle(center, size, angle)
-                self.draw_small_rectangles(center, size, angle,panel)
-                self.already_draw_panel = 1
-                
-
-        else:
-            # Handle the case when the selected panel type is not found
-            # print("Selected panel type not found")
-            pass
 
 
 def main():
