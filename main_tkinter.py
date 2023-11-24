@@ -19,6 +19,7 @@ panel_info = {
 
 class SolarPlanelPlacerApp:
     def __init__(self, master):
+        # Inside the __init__ method
         self.original_image = None  # Initialize the attribute
         self.Azimuth = 0
         # Store clicked points
@@ -152,7 +153,7 @@ class SolarPlanelPlacerApp:
         # Create a label to display the total number of rectangles
         self.total_rectangles_label = tk.Label(frame3, text="Total Rectangles: 0")
         self.total_rectangles_label.pack(side=tk.LEFT)
-        # Inside the __init__ method
+        
 
     def on_canvas_motion(self, event):
         if len(self.points) < 6:
