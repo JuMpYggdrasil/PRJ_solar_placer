@@ -1,7 +1,7 @@
 import tkinter as tk
-import ephem
+from pysolar.solar import get_altitude, get_azimuth
 import math
-import datetime   
+import datetime
 import pytz
 
 class ShadowCalculator:
@@ -15,7 +15,7 @@ class ShadowCalculator:
         # Entry widgets for user input with default values
         tk.Label(master, text="Date and Time (YYYY/MM/DD HH:mm:ss):").pack()
         self.date_entry = tk.Entry(master, width=25)
-        self.date_entry.insert(0, "2023/06/23 14:00:00")  # Default value
+        self.date_entry.insert(0, "2023/06/23 16:00:00")  # Default value
         self.date_entry.pack()
 
         tk.Label(master, text="Latitude:").pack()
@@ -30,61 +30,60 @@ class ShadowCalculator:
 
         tk.Label(master, text="Height of Rectangle (m):").pack()
         self.height_entry = tk.Entry(master)
+        self.height_entry.insert(0, "10")  # Default value
         self.height_entry.pack()
 
         tk.Label(master, text="Width of Rectangle (m):").pack()
         self.width_entry = tk.Entry(master)
+        self.width_entry.insert(0, "10")  # Default value
         self.width_entry.pack()
+
+        tk.Label(master, text="lavitage from ground (m):").pack()
+        self.lavitage_entry = tk.Entry(master)
+        self.lavitage_entry.insert(0, "10")  # Default value
+        self.lavitage_entry.pack()
 
         tk.Button(master, text="Calculate Shadow", command=self.calculate_shadow).pack()
 
     def calculate_shadow(self):
-        
-        
-
         # Get user input
         date_input_str = self.date_entry.get()
         lat_str = self.lat_entry.get()
         lon_str = self.lon_entry.get()
         height_str = self.height_entry.get()
         width_str = self.width_entry.get()
+        lavitage_height_str = self.lavitage_entry.get()
 
-        naive = datetime.datetime.strptime(date_input_str, "%Y/%m/%d %H:%M:%S")
-        UTC_OFFSET = 7
-        utc_datetime = naive - datetime.timedelta(hours=UTC_OFFSET)
-        
+        local_datetime = datetime.datetime.strptime(date_input_str, "%Y/%m/%d %H:%M:%S")
+        pytz.timezone('Asia/Bangkok')
+
+
         # Convert input to appropriate types
-        date = ephem.Date(utc_datetime.strftime("%Y/%m/%d %H:%M:%S"))
+        # -Convert local to UTC
+        date = local_datetime.astimezone(pytz.utc)
         lat = float(lat_str)
         lon = float(lon_str)
         height = float(height_str)
         width = float(width_str)
+        lavitage_height = float(lavitage_height_str)
 
-        # Calculate solar position
-        observer = ephem.Observer()
-        observer.lat, observer.lon = lat, lon
-        observer.date = date
-        observer.temp = 30 # deg. Celcius
-        observer.elevation = 0
+        # Calculate solar position using pysolar
+        solar_altitude = get_altitude(lat, lon, date)
+        solar_azimuth = get_azimuth(lat, lon, date)
+        print(solar_azimuth)
+        print(solar_altitude)
 
-        sun = ephem.Sun(observer)
-        sun_altitude = sun.alt
-        sun_azimuth = sun.az # 90 - az ???????
-        
-        print(sun_azimuth)
-        print(sun_altitude)
-        
-
+        shadow_azimuth = solar_azimuth + 90
 
         # Calculate shadow length
-        phi = math.radians(sun_altitude)
-        phi = phi%(2*math.pi)
-        shadow_length = height / math.tan(phi)
+        phi = math.radians(solar_altitude)
+        phi = phi % (2 * math.pi)
+        shadow_length = lavitage_height / math.tan(phi)
         print(shadow_length)
-        
+
         # Calculate shadow direction using azimuth
-        shadow_direction_x = shadow_length * math.cos(math.radians(sun_azimuth))
-        shadow_direction_y = shadow_length * math.sin(math.radians(sun_azimuth))
+        shadow_direction_x = shadow_length * math.cos(math.radians(shadow_azimuth))
+        shadow_direction_y = shadow_length * math.sin(math.radians(shadow_azimuth))
 
         # Draw rectangle and shadow on canvas
         self.canvas.delete("all")
