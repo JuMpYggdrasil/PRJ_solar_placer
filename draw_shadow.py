@@ -55,17 +55,23 @@ class ShadowCalculator:
         observer = ephem.Observer()
         observer.lat, observer.lon = lat, lon
         observer.date = date
+        observer.temp = 30 # deg. Celcius
+        observer.elevation = 0
 
         sun = ephem.Sun(observer)
         sun_altitude = sun.alt
         sun_azimuth = sun.az # 90 - az ???????
+        
         print(sun_altitude)
         print(sun_azimuth)
 
 
         # Calculate shadow length
-        shadow_length = height / math.tan(math.radians(sun_altitude))
-
+        phi = math.radians(sun_altitude)
+        phi = phi%(2*math.pi)
+        shadow_length = height / math.tan(phi)
+        print(shadow_length)
+        
         # Calculate shadow direction using azimuth
         shadow_direction_x = shadow_length * math.cos(math.radians(sun_azimuth))
         shadow_direction_y = shadow_length * math.sin(math.radians(sun_azimuth))
