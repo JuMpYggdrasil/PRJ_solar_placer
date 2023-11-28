@@ -1,6 +1,8 @@
 import tkinter as tk
 import ephem
 import math
+import datetime   
+import pytz
 
 class ShadowCalculator:
     def __init__(self, master):
@@ -13,7 +15,7 @@ class ShadowCalculator:
         # Entry widgets for user input with default values
         tk.Label(master, text="Date and Time (YYYY/MM/DD HH:mm:ss):").pack()
         self.date_entry = tk.Entry(master, width=25)
-        self.date_entry.insert(0, "2023/06/23 17:00:00")  # Default value
+        self.date_entry.insert(0, "2023/06/23 14:00:00")  # Default value
         self.date_entry.pack()
 
         tk.Label(master, text="Latitude:").pack()
@@ -37,15 +39,22 @@ class ShadowCalculator:
         tk.Button(master, text="Calculate Shadow", command=self.calculate_shadow).pack()
 
     def calculate_shadow(self):
+        
+        
+
         # Get user input
-        date_str = self.date_entry.get()
+        date_input_str = self.date_entry.get()
         lat_str = self.lat_entry.get()
         lon_str = self.lon_entry.get()
         height_str = self.height_entry.get()
         width_str = self.width_entry.get()
 
+        naive = datetime.datetime.strptime(date_input_str, "%Y/%m/%d %H:%M:%S")
+        UTC_OFFSET = 7
+        utc_datetime = naive - datetime.timedelta(hours=UTC_OFFSET)
+        
         # Convert input to appropriate types
-        date = ephem.Date(date_str)
+        date = ephem.Date(utc_datetime.strftime("%Y/%m/%d %H:%M:%S"))
         lat = float(lat_str)
         lon = float(lon_str)
         height = float(height_str)
@@ -62,8 +71,9 @@ class ShadowCalculator:
         sun_altitude = sun.alt
         sun_azimuth = sun.az # 90 - az ???????
         
-        print(sun_altitude)
         print(sun_azimuth)
+        print(sun_altitude)
+        
 
 
         # Calculate shadow length
