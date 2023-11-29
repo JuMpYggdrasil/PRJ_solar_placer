@@ -6,6 +6,9 @@ from tkinter import filedialog
 from tkinter import simpledialog
 from PIL import Image, ImageTk
 import math
+import datetime
+import pytz
+from pysolar.solar import get_altitude, get_azimuth
 
 # Define panel_info as a global variable
 # Each entry contains (power, width, height) information for different solar panels
@@ -43,8 +46,24 @@ class SolarPlanelPlacerApp:
         # Create Canvas
         self.canvas = tk.Canvas(self.master, width=0, height=0)
         self.canvas.pack()
+        
+        
+        
+        
+        
+        # Create a notebook (tabs container)
+        self.notebook = ttk.Notebook(self.master)
+        self.notebook.pack()
+        
+        # Create and add the first tab (Tab 1)
+        tab1 = ttk.Frame(self.notebook)
+        self.notebook.add(tab1, text='panel layout')
+        
+        
+        
+        
 
-        frame4 = tk.Frame(self.master)
+        frame4 = tk.Frame(tab1)
         frame4.pack(side=tk.TOP)
 
         # Add a button to browse and load an image
@@ -94,7 +113,7 @@ class SolarPlanelPlacerApp:
 
 
         # Create a frame for the first line (area_label and distance_label)
-        frame1 = tk.Frame(self.master)
+        frame1 = tk.Frame(tab1)
         frame1.pack(side=tk.TOP)
 
         # Create a label to display the measured area
@@ -121,7 +140,7 @@ class SolarPlanelPlacerApp:
         self.canvas.bind("<Motion>", self.on_canvas_motion)
 
         # Create a frame for the second line (buttons)
-        frame2 = tk.Frame(self.master)
+        frame2 = tk.Frame(tab1)
         frame2.pack(side=tk.TOP)
 
         
@@ -147,12 +166,141 @@ class SolarPlanelPlacerApp:
 
 
         # Create a frame for the third line (total_rectangles_label)
-        frame3 = tk.Frame(self.master)
+        frame3 = tk.Frame(tab1)
         frame3.pack(side=tk.TOP)
 
         # Create a label to display the total number of rectangles
         self.total_rectangles_label = tk.Label(frame3, text="Total Rectangles: 0")
         self.total_rectangles_label.pack(side=tk.LEFT)
+        
+        
+        
+        
+        # Create and add the second tab (Tab 2)
+        tab2 = ttk.Frame(self.notebook)
+        self.notebook.add(tab2, text='Shadow')
+        
+        # Create a frame
+        frame5 = tk.Frame(tab2)
+        frame5.pack(side=tk.TOP)
+        
+        # Entry widgets for user input with default values
+        tk.Label(frame5, text="Date and Time (YYYY/MM/DD HH:mm:ss):").pack(side=tk.LEFT)
+        self.date_entry = tk.Entry(frame5, width=25)
+        self.date_entry.insert(0, "2023/06/23 16:00:00")  # Default value
+        self.date_entry.pack(side=tk.LEFT)
+
+        tk.Label(frame5, text="Latitude:").pack(side=tk.LEFT)
+        self.lat_entry = tk.Entry(frame5, width=25)
+        self.lat_entry.insert(0, "13.811352331546372")  # Default value
+        self.lat_entry.pack(side=tk.LEFT)
+
+        tk.Label(frame5, text="Longitude:").pack(side=tk.LEFT)
+        self.lon_entry = tk.Entry(frame5, width=25)
+        self.lon_entry.insert(0, "100.50430749660208")  # Default value
+        self.lon_entry.pack(side=tk.LEFT)
+        
+        tk.Label(frame5, text="lavitage from ground (m):").pack(side=tk.LEFT)
+        self.lavitage_entry = tk.Entry(frame5)
+        self.lavitage_entry.insert(0, "10")  # Default value
+        self.lavitage_entry.pack(side=tk.LEFT)
+        
+        
+        # Create a frame
+        frame6 = tk.Frame(tab2)
+        frame6.pack(side=tk.TOP)
+
+        # tk.Label(frame6, text="Height of Rectangle (m):").pack(side=tk.LEFT)
+        # self.height_entry = tk.Entry(frame6)
+        # self.height_entry.insert(0, "10")  # Default value
+        # self.height_entry.pack(side=tk.LEFT)
+
+        # tk.Label(frame6, text="Width of Rectangle (m):").pack(side=tk.LEFT)
+        # self.width_entry = tk.Entry(frame6)
+        # self.width_entry.insert(0, "10")  # Default value
+        # self.width_entry.pack(side=tk.LEFT)
+
+        
+
+        tk.Button(frame6, text="Calculate Shadow", command=self.calculate_shadow).pack(side=tk.LEFT)
+        
+        
+        
+    
+    def calculate_shadow(self, color="black", stipple="gray50"):
+        # Get user input
+        date_input_str = self.date_entry.get()
+        lat_str = self.lat_entry.get()
+        lon_str = self.lon_entry.get()
+        # height_str = self.height_entry.get()
+        # width_str = self.width_entry.get()
+        lavitage_height_str = self.lavitage_entry.get()
+
+        local_datetime = datetime.datetime.strptime(date_input_str, "%Y/%m/%d %H:%M:%S")
+        pytz.timezone('Asia/Bangkok')
+
+
+        # Convert input to appropriate types
+        # -Convert local to UTC
+        date = local_datetime.astimezone(pytz.utc)
+        lat = float(lat_str)
+        lon = float(lon_str)
+        # height = float(height_str)
+        # width = float(width_str)
+        lavitage_height = float(lavitage_height_str)
+
+        # Calculate solar position using pysolar
+        solar_altitude = get_altitude(lat, lon, date)
+        solar_azimuth = get_azimuth(lat, lon, date)
+        print(solar_azimuth)
+        print(solar_altitude)
+
+        shadow_azimuth = solar_azimuth + 90
+
+        # Calculate shadow length
+        phi = math.radians(solar_altitude)
+        phi = phi % (2 * math.pi)
+        shadow_length = (lavitage_height / math.tan(phi)) / self.scale_factor
+        
+        print(shadow_length)
+
+        # Calculate shadow direction using azimuth
+        shadow_direction_x = shadow_length * math.cos(math.radians(shadow_azimuth))
+        shadow_direction_y = shadow_length * math.sin(math.radians(shadow_azimuth))
+        
+        if self.already_draw_panel == 0:
+            return
+
+        
+        # Draw shadow lines from each corner of the rectangle
+        shadow_end_x1 = self.points[2][0] + shadow_direction_x
+        shadow_end_y1 = self.points[2][1] + shadow_direction_y
+
+        shadow_end_x2 = self.points[3][0] + shadow_direction_x
+        shadow_end_y2 = self.points[3][1] + shadow_direction_y
+
+        shadow_end_x3 = self.points[4][0] + shadow_direction_x
+        shadow_end_y3 = self.points[4][1] + shadow_direction_y
+
+        shadow_end_x4 = self.points[5][0] + shadow_direction_x
+        shadow_end_y4 = self.points[5][1] + shadow_direction_y
+        
+        
+        # self.reload_canvas()
+        self.calculate_rectangle()
+        
+
+        # Draw shadow lines from each corner to corresponding points on the ground
+        self.canvas.create_line(self.points[2][0], self.points[2][1], shadow_end_x1, shadow_end_y1, fill="black")
+        self.canvas.create_line(self.points[3][0], self.points[3][1], shadow_end_x2, shadow_end_y2, fill="black")
+        self.canvas.create_line(self.points[4][0], self.points[4][1], shadow_end_x3, shadow_end_y3, fill="black")
+        self.canvas.create_line(self.points[5][0], self.points[5][1], shadow_end_x4, shadow_end_y4, fill="black")
+        
+        # Draw the rotated rectangle on the canvas
+        self.canvas.create_polygon(shadow_end_x1, shadow_end_y1, shadow_end_x2, shadow_end_y2, shadow_end_x3, shadow_end_y3, shadow_end_x4, shadow_end_y4, fill=color, stipple=stipple)
+
+
+        
         
 
     def on_canvas_motion(self, event):
@@ -236,7 +384,7 @@ class SolarPlanelPlacerApp:
         self.original_image = Image.open(image_path)
 
         # Resize the image to half its original size
-        new_size = (int(self.original_image.width *3/4), int(self.original_image.height *3/4))
+        new_size = (int(self.original_image.width *7/10), int(self.original_image.height *7/10))
         self.original_image = self.original_image.resize(new_size, Image.Resampling.LANCZOS)
 
         self.tk_image = ImageTk.PhotoImage(self.original_image)
