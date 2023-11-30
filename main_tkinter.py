@@ -23,6 +23,9 @@ panel_info = {
 class SolarPlanelPlacerApp:
     def __init__(self, master):
         # Inside the __init__ method
+        self.shadow_datetimes = ["2023/06/23 09:00:00","2023/06/23 16:00:00",
+                                 "2023/12/23 09:00:00","2023/12/23 16:00:00"]
+
         self.original_image = None  # Initialize the attribute
         self.Azimuth = 0
         # Store clicked points
@@ -184,11 +187,11 @@ class SolarPlanelPlacerApp:
         frame5 = tk.Frame(tab2)
         frame5.pack(side=tk.TOP)
         
-        # Entry widgets for user input with default values
-        tk.Label(frame5, text="Date and Time (YYYY/MM/DD HH:mm:ss):").pack(side=tk.LEFT)
-        self.date_entry = tk.Entry(frame5, width=25)
-        self.date_entry.insert(0, "2023/06/23 16:00:00")  # Default value
-        self.date_entry.pack(side=tk.LEFT)
+        # # Entry widgets for user input with default values
+        # tk.Label(frame5, text="Date and Time (YYYY/MM/DD HH:mm:ss):").pack(side=tk.LEFT)
+        # self.date_entry = tk.Entry(frame5, width=25)
+        # self.date_entry.insert(0, "2023/06/23 16:00:00")  # Default value
+        # self.date_entry.pack(side=tk.LEFT)
 
         tk.Label(frame5, text="Latitude:").pack(side=tk.LEFT)
         self.lat_entry = tk.Entry(frame5, width=25)
@@ -222,23 +225,22 @@ class SolarPlanelPlacerApp:
 
         
 
-        tk.Button(frame6, text="Calculate Shadow", command=self.calculate_shadow).pack(side=tk.LEFT)
+        tk.Button(frame6, text="Calculate Shadow", command=self.calculate_shadows).pack(side=tk.LEFT)
         
         
-        
+    def calculate_shadows(self, color="black", stipple="gray50"):
+        self.reload_canvas()
+        # date_input_str = self.date_entry.get()
+        for shadow_datetime in self.shadow_datetimes:
+            self.calculate_shadow(shadow_datetime)
     
-    def calculate_shadow(self, color="black", stipple="gray50"):
-        # Get user input
-        date_input_str = self.date_entry.get()
+    def calculate_shadow(self, date_input_str, color="black", stipple="gray50"):
         lat_str = self.lat_entry.get()
         lon_str = self.lon_entry.get()
-        # height_str = self.height_entry.get()
-        # width_str = self.width_entry.get()
         lavitage_height_str = self.lavitage_entry.get()
-
+        
         local_datetime = datetime.datetime.strptime(date_input_str, "%Y/%m/%d %H:%M:%S")
         pytz.timezone('Asia/Bangkok')
-
 
         # Convert input to appropriate types
         # -Convert local to UTC
@@ -287,7 +289,7 @@ class SolarPlanelPlacerApp:
         
         
         # self.reload_canvas()
-        self.calculate_rectangle()
+        # self.calculate_rectangle()
         
 
         # Draw shadow lines from each corner to corresponding points on the ground
@@ -532,7 +534,7 @@ class SolarPlanelPlacerApp:
             x, y = area
             self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="pink")
         
-        for n,prohibited_permanent_points in enumerate(self.prohibited_permanent_sets):
+        for prohibited_permanent_points in self.prohibited_permanent_sets:
             # Draw prohibited areas
             for area in prohibited_permanent_points:
                 x, y = area
