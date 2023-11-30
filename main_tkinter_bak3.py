@@ -22,31 +22,24 @@ panel_info = {
 
 class SolarPlanelPlacerApp:
     def __init__(self, master):
+        # Inside the __init__ method
         self.shadow_datetimes = ["2023/06/23 09:00:00","2023/06/23 16:00:00",
                                  "2023/12/23 09:00:00","2023/12/23 16:00:00"]
 
-        self.original_image = None
-        
-        ### Initialize list ###
-        self.distance_labels = []
-
+        self.original_image = None  # Initialize the attribute
+        self.Azimuth = 0
         # Store clicked points
         self.points = []
-
-        # Store object
-        self.panel_points = []
         self.prohibited_points = []
-        self.tree_points = []
+        # self.tree_points = []
         # self.tree_radius = []
 
         self.prohibited_permanent_sets = []
 
+        # Initialize distance_labels list
+        self.distance_labels = []
 
-        # Initial Variable & Flag
-        self.Azimuth = 0
         self.already_draw_panel = 0
-
-
 
         self.master = master
         width = self.master.winfo_screenwidth()
@@ -241,31 +234,6 @@ class SolarPlanelPlacerApp:
 
         tk.Button(frame6, text="Calculate Shadow", command=self.calculate_shadows).pack(side=tk.LEFT)
 
-    def browse_image(self):
-        # Open a file dialog to select an image file
-        file_path = filedialog.askopenfilename(filetypes=[("Image files", "*.png;*.jpg;*.jpeg;*.gif")])
-        if not file_path:
-            return
-        
-        # Load the selected image
-        self.load_image(file_path)
-        # Make the browse_button invisible
-        self.browse_button.pack_forget()
-
-    def entry_changed(self, event):
-        # This function will be called when the entry loses focus
-        # You can access the entry widget using 'event.widget'
-        entry_widget = event.widget
-
-        # Get the current value from the entry widget
-        current_value = entry_widget.get()
-
-        # Do something with the current value, e.g., print it
-        # print(f"Value changed to: {current_value}")
-
-        if self.already_draw_panel == 1:
-            self.calculate_rectangle()
-
     def toggle_tree():
         pass
         
@@ -347,6 +315,33 @@ class SolarPlanelPlacerApp:
         
         
 
+ 
+
+    def entry_changed(self, event):
+        # This function will be called when the entry loses focus
+        # You can access the entry widget using 'event.widget'
+        entry_widget = event.widget
+
+        # Get the current value from the entry widget
+        current_value = entry_widget.get()
+
+        # Do something with the current value, e.g., print it
+        # print(f"Value changed to: {current_value}")
+
+        if self.already_draw_panel == 1:
+            self.calculate_rectangle()
+
+
+    def browse_image(self):
+        # Open a file dialog to select an image file
+        file_path = filedialog.askopenfilename(filetypes=[("Image files", "*.png;*.jpg;*.jpeg;*.gif")])
+        if not file_path:
+            return
+        
+        # Load the selected image
+        self.load_image(file_path)
+        # Make the browse_button invisible
+        self.browse_button.pack_forget()
 
     def toggle_panel_rotation(self):
         if self.panel_rotate_var.get() == 1:
@@ -411,7 +406,14 @@ class SolarPlanelPlacerApp:
         self.prohibited_permanent_sets.append(self.prohibited_points.copy())
         self.reload_canvas()
 
-
+    def on_canvas_right_click(self, event):
+        x, y = event.x, event.y
+        self.prohibited_points.append((x, y))
+        if len(self.prohibited_points) > 4:
+            self.prohibited_points.pop(0)
+        if len(self.prohibited_points)== 4:
+            self.keepout_button["state"] = tk.NORMAL
+        self.reload_canvas()
 
     def on_canvas_click(self, event):
         x, y = event.x, event.y
@@ -469,19 +471,17 @@ class SolarPlanelPlacerApp:
         
         self.reload_canvas()
 
-    def on_canvas_right_click(self, event):
-        x, y = event.x, event.y
-        
-        self.prohibited_points.append((x, y))
-        if len(self.prohibited_points) > 4:
-            self.prohibited_points.pop(0)
-        if len(self.prohibited_points)== 4:
-            self.keepout_button["state"] = tk.NORMAL
-        self.reload_canvas()
 
-
+    def draw_circle(self, x, y, r, canvasName): #center coordinates, radius
+        x0 = x - r
+        y0 = y - r
+        x1 = x + r
+        y1 = y + r
+        return canvasName.create_oval(x0, y0, x1, y1)
 
     def on_canvas_motion(self, event):
+        
+        
         x, y = event.x, event.y
 
         # if self.tree_var.get() == 1:
@@ -522,8 +522,14 @@ class SolarPlanelPlacerApp:
             self.zoom_factor *= 1.1
         else:
             self.zoom_factor /= 1.1
-
+        # print("zoom_factor: ")
+        # print(self.zoom_factor)
         self.reload_canvas()
+        # # Scale all points by self.zoom_factor
+        # scaled_points = [(int(x * self.zoom_factor), int(y * self.zoom_factor)) for x, y in self.points]
+
+        # for prohibited_permanent_points in self.prohibited_permanent_sets:
+            # scaled_prohibited_permanent_points = [(int(x * self.zoom_factor), int(y * self.zoom_factor)) for x, y in prohibited_permanent_points]
 
 
 
@@ -585,6 +591,10 @@ class SolarPlanelPlacerApp:
                 self.canvas.create_polygon(prohibited_permanent_points[0][0], prohibited_permanent_points[0][1], prohibited_permanent_points[1][0], prohibited_permanent_points[1][1], prohibited_permanent_points[2][0], prohibited_permanent_points[2][1], prohibited_permanent_points[3][0], prohibited_permanent_points[3][1], fill="red", stipple="gray50")
 
 
+
+    
+        
+
     def calculate_area(self):
         # Shoelace formula to calculate the area of a polygon
         area_pixels = 0
@@ -610,44 +620,6 @@ class SolarPlanelPlacerApp:
                 (self.points[-2][0] - self.points[-1][0]) ** 2 + (self.points[-2][1] - self.points[-1][1]) ** 2) ** 0.5
         distance_in_meters = pixel_distance * self.scale_factor
         return distance_in_meters
-
-
-
-
-    def calculate_rectangle(self):
-        selected_panel_type = self.panel_type_var.get()
-        panel = panel_info.get(selected_panel_type)
-        if not panel:
-            return
-        
-        num_points = len(self.points)
-        if num_points==0:
-            return
-        
-        self.reload_canvas()
-        # Calculate approximate rectangle properties
-        # Use the last four points to calculate rectangle properties
-        # x_coords, y_coords = zip(*self.points[-4:])
-        points = np.array(self.points[-4:], dtype=np.int32)
-
-        # Find the minimum area rectangle using OpenCV
-        rect = cv2.minAreaRect(points)
-
-        # Draw boundary
-        center, size, angle = rect
-        self.Azimuth = 90-angle
-        # Draw the rotated rectangle on the canvas
-        self.draw_rotated_rectangle(center, size, angle, color="gold")
-        
-
-        # Draw boundary with setback
-        center, size, angle = rect #  the angle value always lies between [-90,0) to X-axis
-        setback_length = float(self.setback_entry.get()) / self.scale_factor
-        size = tuple(s - 2 * setback_length for s in size)
-        # Draw the rotated rectangle on the canvas
-        self.draw_rotated_rectangle(center, size, angle)
-        self.draw_small_rectangles(center, size, angle,panel)
-        self.already_draw_panel = 1
 
     def draw_rotated_rectangle(self, center, size, angle, color="lightblue", stipple="gray50",scaled=1):
         # Calculate the coordinates of the four corners of the rotated rectangle
@@ -802,7 +774,6 @@ class SolarPlanelPlacerApp:
 
         return True  # Rectangles intersect on all axes, there is an intersection
 
-
     def rotate_point(self, x, y, center_x, center_y, angle):
         # Rotate a point (x, y) around a center (center_x, center_y) by a given angle (in degrees)
         angle_rad = math.radians(angle)
@@ -810,12 +781,40 @@ class SolarPlanelPlacerApp:
         rotated_y = center_y + (x - center_x) * math.sin(angle_rad) + (y - center_y) * math.cos(angle_rad)
         return rotated_x, rotated_y
 
-    def draw_circle(self, x, y, r, canvasName): #center coordinates, radius
-        x0 = x - r
-        y0 = y - r
-        x1 = x + r
-        y1 = y + r
-        return canvasName.create_oval(x0, y0, x1, y1)
+    def calculate_rectangle(self):
+        selected_panel_type = self.panel_type_var.get()
+        panel = panel_info.get(selected_panel_type)
+        if not panel:
+            return
+        
+        num_points = len(self.points)
+        if num_points==0:
+            return
+        
+        self.reload_canvas()
+        # Calculate approximate rectangle properties
+        # Use the last four points to calculate rectangle properties
+        # x_coords, y_coords = zip(*self.points[-4:])
+        points = np.array(self.points[-4:], dtype=np.int32)
+
+        # Find the minimum area rectangle using OpenCV
+        rect = cv2.minAreaRect(points)
+
+        # Draw boundary
+        center, size, angle = rect
+        self.Azimuth = 90-angle
+        # Draw the rotated rectangle on the canvas
+        self.draw_rotated_rectangle(center, size, angle, color="gold")
+        
+
+        # Draw boundary with setback
+        center, size, angle = rect #  the angle value always lies between [-90,0) to X-axis
+        setback_length = float(self.setback_entry.get()) / self.scale_factor
+        size = tuple(s - 2 * setback_length for s in size)
+        # Draw the rotated rectangle on the canvas
+        self.draw_rotated_rectangle(center, size, angle)
+        self.draw_small_rectangles(center, size, angle,panel)
+        self.already_draw_panel = 1
 
 
 
