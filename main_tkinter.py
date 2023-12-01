@@ -40,9 +40,9 @@ class SolarPlanelPlacerApp:
         self.panel_points = []
         self.prohibited_points = []
         self.tree_points = []
-        # self.tree_radius = []
 
         self.prohibited_permanent_sets = []
+        self.tree_permanent_sets = []
 
 
         # Initial Variable & Flag
@@ -196,12 +196,6 @@ class SolarPlanelPlacerApp:
         # Create a frame
         frame5 = tk.Frame(tab2)
         frame5.pack(side=tk.TOP)
-        
-        # # Entry widgets for user input with default values
-        # tk.Label(frame5, text="Date and Time (YYYY/MM/DD HH:mm:ss):").pack(side=tk.LEFT)
-        # self.date_entry = tk.Entry(frame5, width=25)
-        # self.date_entry.insert(0, "2023/06/23 16:00:00")  # Default value
-        # self.date_entry.pack(side=tk.LEFT)
 
         tk.Label(frame5, text="Latitude:").pack(side=tk.LEFT)
         self.lat_entry = tk.Entry(frame5, width=25)
@@ -257,7 +251,7 @@ class SolarPlanelPlacerApp:
 
         self.update_canvas()
 
-    def toggle_tree_cb():
+    def toggle_tree_cb(self):
         pass
         
         
@@ -272,9 +266,9 @@ class SolarPlanelPlacerApp:
         
         local_datetime = datetime.datetime.strptime(date_input_str, "%Y/%m/%d %H:%M:%S")
         if local_datetime.month <7:
-            color="brown1"
+            color="gray2"
         else:
-            color="brown4"
+            color="gray4"
         pytz.timezone('Asia/Bangkok')
 
         # Convert input to appropriate types
@@ -289,8 +283,8 @@ class SolarPlanelPlacerApp:
         # Calculate solar position using pysolar
         solar_altitude = get_altitude(lat, lon, date)
         solar_azimuth = get_azimuth(lat, lon, date)
-        print(solar_azimuth)
-        print(solar_altitude)
+        # print(solar_azimuth)
+        # print(solar_altitude)
 
         shadow_azimuth = solar_azimuth + 90
 
@@ -299,7 +293,7 @@ class SolarPlanelPlacerApp:
         phi = phi % (2 * math.pi)
         shadow_length = (lavitage_height / math.tan(phi)) / self.scale_factor
         
-        print(shadow_length)
+        # print(shadow_length)
 
         # Calculate shadow direction using azimuth
         shadow_direction_x = shadow_length * math.cos(math.radians(shadow_azimuth))
@@ -331,6 +325,25 @@ class SolarPlanelPlacerApp:
         
         # Draw the rotated rectangle on the canvas
         self.canvas.create_polygon(shadow_end_x1, shadow_end_y1, shadow_end_x2, shadow_end_y2, shadow_end_x3, shadow_end_y3, shadow_end_x4, shadow_end_y4, fill=color, stipple=stipple)
+
+
+
+        for tree_permanent_points in self.tree_permanent_sets:
+            x0,y0 = tree_permanent_points[0]
+            x1,y1 = tree_permanent_points[1]
+            r = math.dist([x0, y0], [x1, y1])
+
+            tree_shadow_length = (tree_permanent_points[2] / math.tan(phi)) / self.scale_factor
+
+            # Calculate shadow direction using azimuth
+            tree_shadow_direction_x = tree_shadow_length * math.cos(math.radians(shadow_azimuth))
+            tree_shadow_direction_y = tree_shadow_length * math.sin(math.radians(shadow_azimuth))
+
+            shadow_x0 = x0 + tree_shadow_direction_x
+            shadow_y0 = y0 + tree_shadow_direction_y
+
+            self.draw_circle(shadow_x0,shadow_y0,r,self.canvas,fill="black")
+            
 
     def hide_shadows_btn(self):
         self.already_draw_shadow = 0
@@ -374,6 +387,8 @@ class SolarPlanelPlacerApp:
         self.panel_points = []
         self.prohibited_points = []
         self.prohibited_permanent_sets = []
+        self.tree_points = []
+        self.tree_permanent_sets = []
         self.reference_points = []
         self.already_draw_panel = 0
         self.already_draw_shadow = 0
@@ -416,6 +431,17 @@ class SolarPlanelPlacerApp:
 
             return
 
+        if self.tree_var.get() == 1:
+            self.tree_points.append((x,y))
+            self.points = []
+            if len(self.tree_points) == 2:
+                h_val = simpledialog.askfloat("height of tree", "Enter the height of tree (meters):")
+                if h_val is not None:
+                    x,y,h = self.tree_points[0],self.tree_points[1],h_val
+                    self.tree_permanent_sets.append((x,y,h))
+                    self.tree_points = []
+                else:
+                    self.tree_points = []
 
 
         if len(self.points) > 4:
@@ -426,12 +452,13 @@ class SolarPlanelPlacerApp:
             self.panel_points = self.points
             self.points = []
 
+
         # If more than three points are clicked, draw a line to close the loop
-        if len(self.points) > 1:
-            # area = self.calculate_area()
-            # self.area_label.config(text=f"Area: {area:.2f} square meters")
-            # distance = self.calculate_distance()
-            # self.distance_label.config(text=f"Distance: {distance:.2f} meters")
+        if len(self.panel_points) > 1:
+            area = self.calculate_area()
+            self.area_label.config(text=f"Area: {area:.2f} square meters")
+            distance = self.calculate_distance()
+            self.distance_label.config(text=f"Distance: {distance:.2f} meters")
             pass
 
         
@@ -455,36 +482,35 @@ class SolarPlanelPlacerApp:
         # Code to execute when the mouse moves over the canvas
         x, y = event.x, event.y
 
-        # if self.tree_var.get() == 1:
-        #     num_points = len(self.tree_points)
-        #     if num_points == 1:
-        #         x_,y_ = self.tree_points[0]
-        #         r = math.dist([x, y], [x_, y_]) 
-        #         self.tree_radius = r
-        #         # self.draw_circle(x_,y_,r,self.canvas)
-        #         self.update_canvas()
-
-        #     return
-        
-
         self.update_canvas()
-    
     
         if not self.reference_points:
             self.canvas.create_oval(x - 4, y - 4, x + 4, y + 4, fill="", outline="purple", width=2)
             if 0 < len(self.points):
                 self.canvas.create_line(self.points[0][0], self.points[0][1], x, y, fill="maroon1")
+            return
 
-        else:
-            self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="green2")
 
-            if 0 < len(self.points) and len(self.points) < 4:
-                for i in range(len(self.points)-1):
-                    self.canvas.create_line(self.points[i][0], self.points[i][1], self.points[i + 1][0], self.points[i + 1][1], fill="orange")
 
-                # Draw a line connecting the last point to the current mouse coordinates
-                self.canvas.create_line(self.points[-1][0], self.points[-1][1], x, y, fill="orange")
-                self.canvas.create_line(self.points[0][0], self.points[0][1], x, y, fill="orange")
+        if self.tree_var.get() == 1:
+            if len(self.tree_points) == 1:
+                x_,y_ = self.tree_points[0]
+                r = math.dist([x, y], [x_, y_])
+                self.draw_circle(x_,y_,r,self.canvas)
+
+            return
+
+
+        
+        self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="green2")
+
+        if 0 < len(self.points) and len(self.points) < 4:
+            for i in range(len(self.points)-1):
+                self.canvas.create_line(self.points[i][0], self.points[i][1], self.points[i + 1][0], self.points[i + 1][1], fill="orange")
+
+            # Draw a line connecting the last point to the current mouse coordinates
+            self.canvas.create_line(self.points[-1][0], self.points[-1][1], x, y, fill="orange")
+            self.canvas.create_line(self.points[0][0], self.points[0][1], x, y, fill="orange")
 
 
         
@@ -575,20 +601,29 @@ class SolarPlanelPlacerApp:
 
         if self.already_draw_panel == 1:
             self.calculate_panel()
+
         
+
+        for tree_permanent_points in self.tree_permanent_sets:
+            x0,y0 = tree_permanent_points[0]
+            x1,y1 = tree_permanent_points[1]
+            r = math.dist([x0, y0], [x1, y1])
+            self.draw_circle(x0,y0,r,self.canvas,fill="lawn green",outline="")
+            self.canvas.create_text(x0, y0, text=f"{tree_permanent_points[2]:.1f} m", fill="black", font=('Helvetica 10 bold'))
+            self.canvas.pack()
         
 
 
     def calculate_area(self):
         # Shoelace formula to calculate the area of a polygon
         area_pixels = 0
-        num_points = len(self.points)
+        num_points = len(self.panel_points)
 
         for i in range(2, num_points - 1):
-            area_pixels += (self.points[i][0] * self.points[i + 1][1] - self.points[i + 1][0] * self.points[i][1])
+            area_pixels += (self.panel_points[i][0] * self.panel_points[i + 1][1] - self.panel_points[i + 1][0] * self.panel_points[i][1])
 
         # Add the last edge (closing the loop)
-        area_pixels += (self.points[num_points - 1][0] * self.points[2][1] - self.points[2][0] * self.points[num_points - 1][1])
+        area_pixels += (self.panel_points[num_points - 1][0] * self.panel_points[2][1] - self.panel_points[2][0] * self.panel_points[num_points - 1][1])
 
         # Take the absolute value and divide by 2
         area_pixels = abs(area_pixels) / 2.0
@@ -601,7 +636,7 @@ class SolarPlanelPlacerApp:
     def calculate_distance(self):
         # Calculate the distance between the last two points in meters
         pixel_distance = (
-                (self.points[-2][0] - self.points[-1][0]) ** 2 + (self.points[-2][1] - self.points[-1][1]) ** 2) ** 0.5
+                (self.panel_points[-2][0] - self.panel_points[-1][0]) ** 2 + (self.panel_points[-2][1] - self.panel_points[-1][1]) ** 2) ** 0.5
         distance_in_meters = pixel_distance * self.scale_factor
         return distance_in_meters
 
@@ -751,9 +786,9 @@ class SolarPlanelPlacerApp:
                         else:
                             agree_count = agree_count + 1
                     if agree_count==len(self.prohibited_permanent_sets):
-                        self.draw_rotated_rectangle(each_center, small_size, angle,color="midnight blue",stipple=None,scaled=0.95)
+                        self.draw_rotated_rectangle(each_center, small_size, angle,color="midnight blue",stipple=None,scaled=0.98)
                 else:
-                    self.draw_rotated_rectangle(each_center, small_size, angle,color="midnight blue",stipple=None,scaled=0.95)
+                    self.draw_rotated_rectangle(each_center, small_size, angle,color="midnight blue",stipple=None,scaled=0.98)
 
         x1, y1 = center[0] - 4, center[1] - 4
         x2, y2 = center[0] + 4, center[1] + 4
@@ -808,12 +843,33 @@ class SolarPlanelPlacerApp:
         rotated_y = center_y + (x - center_x) * math.sin(angle_rad) + (y - center_y) * math.cos(angle_rad)
         return rotated_x, rotated_y
 
-    def draw_circle(self, x, y, r, canvasName): #center coordinates, radius
+    def draw_circle(self, x, y, r, canvasName,fill="",outline="black"): #center coordinates, radius
         x0 = x - r
         y0 = y - r
         x1 = x + r
         y1 = y + r
-        return canvasName.create_oval(x0, y0, x1, y1)
+            
+        return canvasName.create_oval(x0, y0, x1, y1,fill=fill,outline=outline)
+    
+    def draw_circle_stipple(self, x, y, r, canvasName,outline="gray50"): #center coordinates, radius
+        x0 = x - r
+        y0 = y - r
+        x1 = x + r
+        y1 = y + r
+        y_old = 0
+
+        # Draw stipple lines inside the circle
+        for angle in range(0, 360, 1):  # Adjust the step size as needed
+            radian_angle = math.radians(angle)
+            x_start = x - int(r * math.cos(radian_angle))
+            x_end = x + int(r * math.cos(radian_angle))
+            y_start = y + int(r * math.sin(radian_angle))
+            y_end = y + int(r * math.sin(radian_angle))
+            if abs(y_start - y_old) > 1:
+                canvasName.create_line(x_start, y_start, x_end, y_end,fill="gray50")
+                y_old = y_start
+            
+        return canvasName.create_oval(x0, y0, x1, y1,fill="",outline=outline)
 
 
 

@@ -813,7 +813,7 @@ class SolarPlanelPlacerApp:
         y0 = y - r
         x1 = x + r
         y1 = y + r
-        return canvasName.create_oval(x0, y0, x1, y1)
+        return canvasName.create_oval(x0, y0, x1, y1,stipple='gray25')
 
 
 
