@@ -333,7 +333,9 @@ class SolarPlanelPlacerApp:
             x1,y1 = tree_permanent_points[1]
             r = math.dist([x0, y0], [x1, y1])
 
-            tree_shadow_length = (tree_permanent_points[2] / math.tan(phi)) / self.scale_factor
+            dh = self.bound(tree_permanent_points[2] - lavitage_height, 0,100)
+
+            tree_shadow_length = (dh / math.tan(phi)) / self.scale_factor
 
             # Calculate shadow direction using azimuth
             tree_shadow_direction_x = tree_shadow_length * math.cos(math.radians(shadow_azimuth))
@@ -493,6 +495,9 @@ class SolarPlanelPlacerApp:
 
 
         if self.tree_var.get() == 1:
+            self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="lawn green", outline="", width=1)
+            self.canvas.create_text(x, y, text=f"draw trees", fill="black", font=('Helvetica 10 bold'))
+            self.canvas.pack()
             if len(self.tree_points) == 1:
                 x_,y_ = self.tree_points[0]
                 r = math.dist([x, y], [x_, y_])
@@ -502,7 +507,10 @@ class SolarPlanelPlacerApp:
 
 
         
-        self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="green2")
+        # self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="green2")
+        self.draw_2half_circle(self.canvas,x, y,3,fill_left="green2",fill_right="deep pink")
+        
+
 
         if 0 < len(self.points) and len(self.points) < 4:
             for i in range(len(self.points)-1):
@@ -870,6 +878,16 @@ class SolarPlanelPlacerApp:
                 y_old = y_start
             
         return canvasName.create_oval(x0, y0, x1, y1,fill="",outline=outline)
+    
+    def draw_2half_circle(self,canvas, x, y, radius,fill_left="green2",fill_right="red"):
+        # Draw left half with green2 color
+        canvas.create_arc(x - radius, y - radius, x + radius, y + radius, start=90, extent=180, fill=fill_left, outline="")
+
+        # Draw right half with red color
+        canvas.create_arc(x - radius, y - radius, x + radius, y + radius, start=-90, extent=180, fill=fill_right, outline="")
+
+    def bound(self,low, high, value):
+        return max(low, min(high, value))
 
 
 
