@@ -451,7 +451,14 @@ class SolarPlanelPlacerApp:
 
         if len(self.points) == 4:
             self.calculate_button["state"] = tk.NORMAL
-            self.panel_points = self.points
+            
+            points = np.array(self.points[-4:], dtype=np.int32)
+            # Find the minimum area rectangle using OpenCV
+            rect = cv2.minAreaRect(points)
+            box = cv2.boxPoints(rect)
+            box = np.int_(box)
+            self.panel_points = box.tolist()
+            # self.panel_points = self.points
             self.points = []
 
 
@@ -577,9 +584,11 @@ class SolarPlanelPlacerApp:
             x, y = point
             self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="purple")
 
-        for point in self.panel_points:
+        for n,point in enumerate(self.panel_points):
             x, y = point
             self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="blue")
+            self.canvas.create_text(x +10 , y, text=f"{n}", fill="black", font=('Helvetica 10 bold'))
+            
 
 
         if len(self.panel_points) > 0:
@@ -618,7 +627,6 @@ class SolarPlanelPlacerApp:
             r = math.dist([x0, y0], [x1, y1])
             self.draw_circle(x0,y0,r,self.canvas,fill="lawn green",outline="")
             self.canvas.create_text(x0, y0, text=f"{tree_permanent_points[2]:.1f} m", fill="black", font=('Helvetica 10 bold'))
-            self.canvas.pack()
         
 
 
@@ -674,6 +682,7 @@ class SolarPlanelPlacerApp:
         # Find the minimum area rectangle using OpenCV
         rect = cv2.minAreaRect(points)
 
+
         # Draw boundary
         center, size, angle = rect
         self.Azimuth = 90-angle
@@ -687,9 +696,9 @@ class SolarPlanelPlacerApp:
         size = tuple(s - 2 * setback_length for s in size)
         # Draw the rotated rectangle on the canvas
         self.draw_rotated_rectangle(center, size, angle)
+        self.draw_rotated_angle(center, size, angle)
         self.draw_small_rectangles(center, size, angle,panel)
         
-
     def draw_rotated_rectangle(self, center, size, angle, color="lightblue", stipple="gray50",scaled=1):
         # Calculate the coordinates of the four corners of the rotated rectangle
         w, h = size
@@ -713,6 +722,39 @@ class SolarPlanelPlacerApp:
 
         # Draw the rotated rectangle on the canvas
         self.canvas.create_polygon(x1, y1, x2, y2, x3, y3, x4, y4, fill=color, stipple=stipple)
+        
+
+    def draw_rotated_angle(self, center, size, angle, color="lightblue", stipple="gray50",scaled=1):
+        # Calculate the coordinates of the four corners of the rotated rectangle
+        w, h = size
+        w = w*scaled
+        h = h*scaled
+        angle_rad = math.radians(angle)
+        cos_a = math.cos(angle_rad)
+        sin_a = math.sin(angle_rad)
+
+        x1 = center[0] - w / 2 * cos_a - h / 2 * sin_a
+        y1 = center[1] - w / 2 * sin_a + h / 2 * cos_a
+
+        x2 = center[0] + w / 2 * cos_a - h / 2 * sin_a
+        y2 = center[1] + w / 2 * sin_a + h / 2 * cos_a
+
+        x3 = center[0] + w / 2 * cos_a + h / 2 * sin_a
+        y3 = center[1] + w / 2 * sin_a - h / 2 * cos_a
+
+        x4 = center[0] - w / 2 * cos_a + h / 2 * sin_a
+        y4 = center[1] - w / 2 * sin_a - h / 2 * cos_a
+
+        ymax = max(y1,y2,y3,y4)
+
+        self.canvas.create_line(x2, ymax, x3, ymax, fill="black")
+        self.canvas.create_line(x2, ymax+1, x3, ymax+1, fill="white")
+        self.canvas.create_line(x2, ymax, x1, ymax, fill="white")
+        self.canvas.create_line(x2, ymax+1, x1, ymax+1, fill="black")
+        self.canvas.create_text((x2+x3)/2, ymax+10, text=f"{(90-angle):.1f} deg", fill="black", font=('Helvetica 10 bold'))
+        self.canvas.create_text((x2+x1)/2, ymax+10, text=f"{(angle):.1f} deg", fill="black", font=('Helvetica 10 bold'))
+
+
 
     def draw_small_rectangles(self, center, size, angle,panel):
         intersection_count = 0
@@ -805,7 +847,7 @@ class SolarPlanelPlacerApp:
         # Update the label to display the total number of rectangles
         num_rectangles_total = num_rectangles_horizontal * num_rectangles_vertical - intersection_count
         kW_total = panel_power * num_rectangles_total /1000
-        self.total_rectangles_label.config(text=f"panel:{num_rectangles_horizontal}x{num_rectangles_vertical}= {num_rectangles_total} , kWp: {kW_total:.2f} kW , Angle (deg): {self.Azimuth:.1f}")#88% 
+        self.total_rectangles_label.config(text=f"panel:{num_rectangles_horizontal}x{num_rectangles_vertical}= {num_rectangles_total} , kWp: {kW_total:.2f} kW , Angle (deg): {90-self.Azimuth:.1f} / {self.Azimuth:.1f}")#88% 
 
     def check_hit_detection(self, rect1, rect2):
         # Check for precise intersection between two rotated rectangles
