@@ -229,6 +229,27 @@ class SolarPlanelPlacerApp:
         self.clear_trees_button = tk.Button(frame6, text="Clear Trees", command=self.clear_trees_btn)
         self.clear_trees_button.pack(side=tk.LEFT)
 
+        # Create and add the second tab (Tab 3)
+        tab3 = ttk.Frame(self.notebook)
+        self.notebook.add(tab3, text='PVOUT/Year')
+
+        # Create a frame
+        frame8 = tk.Frame(tab3)
+        frame8.pack(side=tk.TOP)
+
+        # Entry widget for small_gap_height
+        tk.Label(frame8, text="Specific photovoltaic power output per year (kWh/kWp):").pack(side=tk.LEFT)
+        self.pvout_entry = tk.Entry(frame8)
+        self.pvout_entry.insert(0, "1433.2")  # Set default value
+        self.pvout_entry.pack(side=tk.LEFT)
+        # float(self.pvout_entry.get())
+
+        # Create a frame
+        frame9 = tk.Frame(tab3)
+        frame9.pack(side=tk.TOP)
+        tk.Label(frame9, text="*note:\nTHAILAND= 1529.5\nBKK= 1433.2\nhttps://globalsolaratlas.info/map").pack(side=tk.LEFT)
+
+
     def browse_image_btn(self):
         # Open a file dialog to select an image file
         file_path = filedialog.askopenfilename(filetypes=[("Image files", "*.png;*.jpg;*.jpeg;*.gif")])
@@ -907,7 +928,8 @@ class SolarPlanelPlacerApp:
         # Update the label to display the total number of rectangles
         num_rectangles_total = num_rectangles_horizontal * num_rectangles_vertical - intersection_count
         kW_total = panel_power * num_rectangles_total /1000
-        self.total_rectangles_label.config(text=f"panel:{num_rectangles_horizontal}x{num_rectangles_vertical}= {num_rectangles_total} , kWp: {kW_total:.2f} kW , Angle (deg): {90-self.Azimuth:.1f} / {self.Azimuth:.1f}")#88% 
+        kWh_total = kW_total * float(self.pvout_entry.get())
+        self.total_rectangles_label.config(text=f"panel:{num_rectangles_horizontal}x{num_rectangles_vertical}= {num_rectangles_total:,} , Angle (deg): {90-self.Azimuth:.1f} / {self.Azimuth:.1f} , kWp: {kW_total:,.2f} kW, Anual Energy {kWh_total:,.2f} kWh")
 
     def check_hit_detection(self, rect1, rect2):
         # Check for precise intersection between two rotated rectangles
