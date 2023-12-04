@@ -171,7 +171,7 @@ class SolarPlanelPlacerApp:
         self.keepout_button = tk.Button(frame2, text="Keepout", command=self.add_keepout_btn, state=tk.DISABLED)
         self.keepout_button.pack(side=tk.LEFT)
 
-        self.clear_button = tk.Button(frame2, text="Clear", command=self.clear_canvas_btn)
+        self.clear_button = tk.Button(frame2, text="Clear Panel", command=self.clear_canvas_btn)
         self.clear_button.pack(side=tk.LEFT)
 
         self.clear_all_button = tk.Button(frame2, text="Clear All", command=self.clear_all_canvas_btn)
@@ -214,7 +214,7 @@ class SolarPlanelPlacerApp:
 
         # Checkbox for prohibiting points
         self.tree_var = tk.IntVar()
-        self.tree_checkbox = tk.Checkbutton(frame5, text="Tree", variable=self.tree_var, command=self.toggle_tree_cb)
+        self.tree_checkbox = tk.Checkbutton(frame5, text="Tree", variable=self.tree_var, command=self.toggle_tree_cb, state=tk.DISABLED)
         self.tree_checkbox.pack(side=tk.LEFT)
         
         
@@ -226,6 +226,8 @@ class SolarPlanelPlacerApp:
         self.cal_shadow_button.pack(side=tk.LEFT)
         self.hide_shadow_button = tk.Button(frame6, text="Hide Shadow", command=self.hide_shadows_btn)
         self.hide_shadow_button.pack(side=tk.LEFT)
+        self.clear_trees_button = tk.Button(frame6, text="Clear Trees", command=self.clear_trees_btn)
+        self.clear_trees_button.pack(side=tk.LEFT)
 
     def browse_image_btn(self):
         # Open a file dialog to select an image file
@@ -258,8 +260,8 @@ class SolarPlanelPlacerApp:
     def calculate_shadows_btn(self, color="black", stipple="gray50"):
         self.already_draw_shadow = 1
         self.update_canvas()
-    
-    def calculate_shadow(self, date_input_str, color="black", stipple="gray50"):
+
+    def calculate_panel_shadow(self, date_input_str, color="black", stipple="gray50"):
         lat_str = self.lat_entry.get()
         lon_str = self.lon_entry.get()
         lavitage_height_str = self.lavitage_entry.get()
@@ -326,7 +328,43 @@ class SolarPlanelPlacerApp:
         # Draw the rotated rectangle on the canvas
         self.canvas.create_polygon(shadow_end_x1, shadow_end_y1, shadow_end_x2, shadow_end_y2, shadow_end_x3, shadow_end_y3, shadow_end_x4, shadow_end_y4, fill=color, stipple=stipple)
 
+    
+    def calculate_trees_shadow(self, date_input_str, color="black", stipple="gray50"):
+        lat_str = self.lat_entry.get()
+        lon_str = self.lon_entry.get()
+        lavitage_height_str = self.lavitage_entry.get()
+        
+        local_datetime = datetime.datetime.strptime(date_input_str, "%Y/%m/%d %H:%M:%S")
+        if local_datetime.month <7:
+            color="gray2"
+        else:
+            color="gray4"
+        pytz.timezone('Asia/Bangkok')
 
+        # Convert input to appropriate types
+        # -Convert local to UTC
+        date = local_datetime.astimezone(pytz.utc)
+        lat = float(lat_str)
+        lon = float(lon_str)
+        # height = float(height_str)
+        # width = float(width_str)
+        lavitage_height = float(lavitage_height_str)
+
+        # Calculate solar position using pysolar
+        solar_altitude = get_altitude(lat, lon, date)
+        solar_azimuth = get_azimuth(lat, lon, date)
+        # print(solar_azimuth)
+        # print(solar_altitude)
+
+        shadow_azimuth = solar_azimuth + 90
+
+        # Calculate shadow length
+        phi = math.radians(solar_altitude)
+        phi = phi % (2 * math.pi)
+
+        
+        if self.already_draw_panel == 0:
+            return
 
         for tree_permanent_points in self.tree_permanent_sets:
             x0,y0 = tree_permanent_points[0]
@@ -349,6 +387,11 @@ class SolarPlanelPlacerApp:
 
     def hide_shadows_btn(self):
         self.already_draw_shadow = 0
+        self.update_canvas()
+
+    def clear_trees_btn(self):
+        self.tree_points = []
+        self.tree_permanent_sets = []
         self.update_canvas()
         
     def toggle_panel_rotation(self):
@@ -382,6 +425,8 @@ class SolarPlanelPlacerApp:
         self.already_draw_shadow = 0
         self.update_canvas()
         self.cal_shadow_button["state"] = tk.DISABLED
+        self.tree_checkbox["state"] = tk.DISABLED
+        
 
 
     def clear_all_canvas_btn(self):
@@ -398,10 +443,13 @@ class SolarPlanelPlacerApp:
         self.calculate_button["state"] = tk.DISABLED
         self.keepout_button["state"] = tk.DISABLED
         self.cal_shadow_button["state"] = tk.DISABLED
+        self.tree_checkbox["state"] = tk.DISABLED
+        
  
 
     def add_keepout_btn(self):
         self.prohibited_permanent_sets.append(self.prohibited_points.copy())
+        self.keepout_button["state"] = tk.DISABLED
         self.update_canvas()
 
 
@@ -476,6 +524,11 @@ class SolarPlanelPlacerApp:
 
     def on_canvas_right_click(self, event):
         x, y = event.x, event.y
+
+        if self.tree_var.get() == 1:
+            if len(self.tree_points) == 1:
+                self.tree_points = []
+            return
         
         self.prohibited_points.append((x, y))
         if len(self.prohibited_points) > 4:
@@ -587,7 +640,7 @@ class SolarPlanelPlacerApp:
         for n,point in enumerate(self.panel_points):
             x, y = point
             self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="blue")
-            self.canvas.create_text(x +10 , y, text=f"{n}", fill="black", font=('Helvetica 10 bold'))
+            # self.canvas.create_text(x +10 , y, text=f"{n}", fill="black", font=('Helvetica 10 bold'))
             
 
 
@@ -612,15 +665,21 @@ class SolarPlanelPlacerApp:
             if len(prohibited_permanent_points)>=4:
                 self.canvas.create_polygon(prohibited_permanent_points[0][0], prohibited_permanent_points[0][1], prohibited_permanent_points[1][0], prohibited_permanent_points[1][1], prohibited_permanent_points[2][0], prohibited_permanent_points[2][1], prohibited_permanent_points[3][0], prohibited_permanent_points[3][1], fill="red", stipple="gray50")
 
+        # draw panel shadow
         if self.already_draw_shadow == 1:
             for shadow_datetime in self.shadow_datetimes:
-                self.calculate_shadow(shadow_datetime)
+                self.calculate_panel_shadow(shadow_datetime)
 
+        # draw panel
         if self.already_draw_panel == 1:
             self.calculate_panel()
-
         
+        # draw trees shadow
+        if self.already_draw_shadow == 1:
+            for shadow_datetime in self.shadow_datetimes:
+                self.calculate_trees_shadow(shadow_datetime)
 
+        # # draw trees
         for tree_permanent_points in self.tree_permanent_sets:
             x0,y0 = tree_permanent_points[0]
             x1,y1 = tree_permanent_points[1]
@@ -660,6 +719,7 @@ class SolarPlanelPlacerApp:
     def calculate_panel_btn(self):
         self.already_draw_panel = 1
         self.cal_shadow_button["state"] = tk.NORMAL
+        self.tree_checkbox["state"] = tk.NORMAL
         self.update_canvas()
         
 
