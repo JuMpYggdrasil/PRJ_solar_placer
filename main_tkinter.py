@@ -212,6 +212,11 @@ class SolarPlanelPlacerApp:
         self.lavitage_entry.insert(0, "0")  # Default value
         self.lavitage_entry.pack(side=tk.LEFT)
 
+        tk.Label(frame5, text="Tilt Angle (deg):").pack(side=tk.LEFT)
+        self.tilt_angle_entry = tk.Entry(frame5)
+        self.tilt_angle_entry.insert(0, "10")  # Default value
+        self.tilt_angle_entry.pack(side=tk.LEFT)
+
         # Checkbox for prohibiting points
         self.tree_var = tk.IntVar()
         self.tree_checkbox = tk.Checkbutton(frame5, text="Tree", variable=self.tree_var, command=self.toggle_tree_cb, state=tk.DISABLED)
@@ -927,9 +932,35 @@ class SolarPlanelPlacerApp:
 
         # Update the label to display the total number of rectangles
         num_rectangles_total = num_rectangles_horizontal * num_rectangles_vertical - intersection_count
-        kW_total = panel_power * num_rectangles_total /1000
-        kWh_total = kW_total * float(self.pvout_entry.get())
-        self.total_rectangles_label.config(text=f"panel:{num_rectangles_horizontal}x{num_rectangles_vertical}= {num_rectangles_total:,} , Angle (deg): {90-self.Azimuth:.1f} / {self.Azimuth:.1f} , kWp: {kW_total:,.2f} kW, Anual Energy {kWh_total:,.2f} kWh")
+        kWp_total = panel_power * num_rectangles_total /1000
+        tilt_ratio = self.tilt_calcutation(float(self.tilt_angle_entry.get()))
+        PVSYST_ratio = 0.91
+        kWp_to_kWh = float(self.pvout_entry.get()) # per year
+        kWh_total = kWp_total * kWp_to_kWh * PVSYST_ratio * tilt_ratio
+        self.total_rectangles_label.config(text=f"panel:{num_rectangles_horizontal}x{num_rectangles_vertical}= {num_rectangles_total:,} , Angle (deg): {90-self.Azimuth:.1f} / {self.Azimuth:.1f} , kWp: {kWp_total:,.2f} kW, Anual Energy {kWh_total:,.2f} kWh")
+    
+    
+    
+    def tilt_calcutation(self,angle):
+        tilt_ratio_value = 1.00
+        if 0 < angle and angle <= 2:
+            tilt_ratio_value = 1.00
+        if 2 < angle and angle <= 5:
+            tilt_ratio_value = 1.01
+        if 5 < angle and angle <= 10:
+            tilt_ratio_value = 1.02
+        if 10 < angle and angle <= 22:
+            tilt_ratio_value = 1.03
+        if 22 < angle and angle <= 27:
+            tilt_ratio_value = 1.02
+        if 27 < angle and angle <= 31:
+            tilt_ratio_value = 1.01
+        if 31 < angle and angle <= 34:
+            tilt_ratio_value = 1.00
+        if 34 < angle:
+            tilt_ratio_value = 0.99
+
+        return tilt_ratio_value
 
     def check_hit_detection(self, rect1, rect2):
         # Check for precise intersection between two rotated rectangles
