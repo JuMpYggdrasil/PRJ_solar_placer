@@ -520,6 +520,7 @@ class SolarPlanelPlacerApp:
                     self.tree_points = []
 
 
+
         if len(self.points) > 4:
             self.points.pop(0)
 
@@ -552,6 +553,9 @@ class SolarPlanelPlacerApp:
         x, y = event.x, event.y
 
         if self.tree_var.get() == 1:
+            if len(self.tree_points) == 0:
+                self.tree_points = []
+                self.tree_var.set(False)
             if len(self.tree_points) == 1:
                 self.tree_points = []
             return
@@ -934,6 +938,7 @@ class SolarPlanelPlacerApp:
         num_rectangles_total = num_rectangles_horizontal * num_rectangles_vertical - intersection_count
         kWp_total = panel_power * num_rectangles_total /1000
         tilt_ratio = self.tilt_calcutation(float(self.tilt_angle_entry.get()))
+        # in thailand azimuth angle can ignore
         PVSYST_ratio = 0.91
         kWp_to_kWh = float(self.pvout_entry.get()) # per year
         kWh_total = kWp_total * kWp_to_kWh * PVSYST_ratio * tilt_ratio
