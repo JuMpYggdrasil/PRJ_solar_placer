@@ -11,6 +11,7 @@ import pytz
 from pysolar.solar import get_altitude, get_azimuth
 import matplotlib.pyplot as plt
 import calendar
+import json
 
 # Define panel_info as a global variable
 # Each entry contains (power, width, height) information for different solar panels
@@ -40,6 +41,8 @@ class SolarPlanelPlacerApp:
                                 7.707856034,
                                 7.939395188,
                                 8.656304852]
+
+
         self.kWh_total = 0
 
         self.original_image = None
@@ -124,10 +127,10 @@ class SolarPlanelPlacerApp:
 
         
         # Bind the <FocusOut> event to the callback function
-        self.gap_width_entry.bind("<FocusOut>", self.entry_changed)
-        self.gap_height_entry.bind("<FocusOut>", self.entry_changed)
-        self.walk_gap_entry.bind("<FocusOut>", self.entry_changed)
-        self.setback_entry.bind("<FocusOut>", self.entry_changed)
+        self.gap_width_entry.bind("<FocusOut>", self.entry_changed1)
+        self.gap_height_entry.bind("<FocusOut>", self.entry_changed1)
+        self.walk_gap_entry.bind("<FocusOut>", self.entry_changed1)
+        self.setback_entry.bind("<FocusOut>", self.entry_changed1)
 
         # Checkbox for prohibiting points
         self.panel_rotate_var = tk.IntVar()
@@ -214,12 +217,14 @@ class SolarPlanelPlacerApp:
 
         tk.Label(frame5, text="Latitude:").pack(side=tk.LEFT)
         self.lat_entry = tk.Entry(frame5, width=25)
-        self.lat_entry.insert(0, "13.765733827940576")  # Default value
+        # self.lat_entry.insert(0, "13.765733827940576")  # Default value
+        self.lat_entry.insert(0, "13.008111714871003")  # Default value
         self.lat_entry.pack(side=tk.LEFT)
 
         tk.Label(frame5, text="Longitude:").pack(side=tk.LEFT)
         self.lon_entry = tk.Entry(frame5, width=25)
-        self.lon_entry.insert(0, "100.50257304756634")  # Default value
+        # self.lon_entry.insert(0, "100.50257304756634")  # Default value
+        self.lon_entry.insert(0, "100.99718418384403")  # Default value
         self.lon_entry.pack(side=tk.LEFT)
         
         tk.Label(frame5, text="lavitage from ground (m):").pack(side=tk.LEFT)
@@ -231,6 +236,12 @@ class SolarPlanelPlacerApp:
         self.tilt_angle_entry = tk.Entry(frame5)
         self.tilt_angle_entry.insert(0, "10")  # Default value
         self.tilt_angle_entry.pack(side=tk.LEFT)
+
+        # Bind the <FocusOut> event to the callback function
+        self.lat_entry.bind("<FocusOut>", self.entry_changed2)
+        self.lon_entry.bind("<FocusOut>", self.entry_changed2)
+        self.lavitage_entry.bind("<FocusOut>", self.entry_changed2)
+        self.tilt_angle_entry.bind("<FocusOut>", self.entry_changed2)
 
         # Checkbox for prohibiting points
         self.tree_var = tk.IntVar()
@@ -248,6 +259,12 @@ class SolarPlanelPlacerApp:
         self.hide_shadow_button.pack(side=tk.LEFT)
         self.clear_trees_button = tk.Button(frame6, text="Clear Trees", command=self.clear_trees_btn)
         self.clear_trees_button.pack(side=tk.LEFT)
+
+        frame7 = tk.Frame(tab2)
+        frame7.pack(side=tk.TOP)
+
+        self.province_label = tk.Label(frame7, text="province: ")
+        self.province_label.pack(side=tk.LEFT)
 
         # Create and add the second tab (Tab 3)
         tab3 = ttk.Frame(self.notebook)
@@ -272,6 +289,28 @@ class SolarPlanelPlacerApp:
         frame9.pack(side=tk.TOP)
         tk.Label(frame9, text="*note:\nTHAILAND= 1529.5\nBKK= 1433.2\nhttps://globalsolaratlas.info/map").pack(side=tk.LEFT)
 
+        self.update_lat_lng()
+    
+        
+    def get_pvout(self, user_lat, user_lng):
+        # Load JSON data
+        with open('thai_pv_zipcode.json', 'r', encoding='utf-8') as file:
+            data = json.load(file)
+
+        nearest_location = self.find_nearest_location(user_lat, user_lng, data)
+
+        # if nearest_location:
+        #     print(f"Nearest Location: District - {nearest_location['district']}, Province - {nearest_location['province']}")
+        # else:
+        #     print("No locations found.")
+
+        for location in data:
+            if nearest_location["province"] == location["province"]:
+                # print(location["pvout"])
+                return location["pvout"],location["province"]
+            
+        return None,None
+        
 
     def monthly_plot_btn(self):
         annual_power = self.kWh_total
@@ -309,7 +348,7 @@ class SolarPlanelPlacerApp:
         # Make the browse_button invisible
         self.browse_button.pack_forget()
 
-    def entry_changed(self, event):
+    def entry_changed1(self, event):
         # This function will be called when the entry loses focus
         # You can access the entry widget using 'event.widget'
         entry_widget = event.widget
@@ -321,6 +360,36 @@ class SolarPlanelPlacerApp:
         # print(f"Value changed to: {current_value}")
 
         self.update_canvas()
+
+    def entry_changed2(self, event):
+        # This function will be called when the entry loses focus
+        # You can access the entry widget using 'event.widget'
+        entry_widget = event.widget
+
+        # Get the current value from the entry widget
+        current_value = entry_widget.get()
+
+        # Do something with the current value, e.g., print it
+        # print(f"Value changed to: {current_value}")
+        self.update_lat_lng()
+
+
+    def update_lat_lng(self):
+        try:
+            user_lat = float(self.lat_entry.get())
+        except ValueError:
+            user_lat = 0
+        try:
+            user_lng = float(self.lon_entry.get())
+        except ValueError:
+            user_lng = 0    
+
+        self.pvout, self.province = self.get_pvout(user_lat,user_lng)
+        if self.pvout:
+            self.province_label.config(text=f"province: {self.province}")
+
+            self.pvout_entry.delete(0,len(self.pvout_entry.get()))
+            self.pvout_entry.insert(0,self.pvout)
 
     def toggle_tree_cb(self):
         pass
@@ -345,11 +414,14 @@ class SolarPlanelPlacerApp:
         # Convert input to appropriate types
         # -Convert local to UTC
         date = local_datetime.astimezone(pytz.utc)
-        lat = float(lat_str)
-        lon = float(lon_str)
-        # height = float(height_str)
-        # width = float(width_str)
-        lavitage_height = float(lavitage_height_str)
+        try:
+            lat = float(lat_str)
+            lon = float(lon_str)
+            lavitage_height = float(lavitage_height_str)
+        except ValueError:
+            lat = 0
+            lon = 0
+            lavitage_height = 0
 
         # Calculate solar position using pysolar
         solar_altitude = get_altitude(lat, lon, date)
@@ -413,11 +485,15 @@ class SolarPlanelPlacerApp:
         # Convert input to appropriate types
         # -Convert local to UTC
         date = local_datetime.astimezone(pytz.utc)
-        lat = float(lat_str)
-        lon = float(lon_str)
-        # height = float(height_str)
-        # width = float(width_str)
-        lavitage_height = float(lavitage_height_str)
+        
+        try:
+            lat = float(lat_str)
+            lon = float(lon_str)
+            lavitage_height = float(lavitage_height_str)
+        except ValueError:
+            lat = 0
+            lon = 0
+            lavitage_height = 0
 
         # Calculate solar position using pysolar
         solar_altitude = get_altitude(lat, lon, date)
@@ -825,7 +901,10 @@ class SolarPlanelPlacerApp:
 
         # Draw boundary with setback
         center, size, angle = rect #  the angle value always lies between [-90,0) to X-axis
-        setback_length = float(self.setback_entry.get()) / self.scale_factor
+        try:
+            setback_length = float(self.setback_entry.get()) / self.scale_factor
+        except ValueError:
+            setback_length = 0
         size = tuple(s - 2 * setback_length for s in size)
         # Draw the rotated rectangle on the canvas
         self.draw_rotated_rectangle(center, size, angle)
@@ -983,7 +1062,10 @@ class SolarPlanelPlacerApp:
         tilt_ratio = self.tilt_calcutation(float(self.tilt_angle_entry.get()))
         # in thailand azimuth angle can ignore
         PVSYST_ratio = 0.91
-        kWp_to_kWh = float(self.pvout_entry.get()) # per year
+        try:
+            kWp_to_kWh = float(self.pvout_entry.get()) # per year
+        except ValueError:
+            kWp_to_kWh = 0
         self.kWh_total = kWp_total * kWp_to_kWh * PVSYST_ratio * tilt_ratio
         self.total_rectangles_label.config(text=f"panel:{num_rectangles_horizontal}x{num_rectangles_vertical}= {num_rectangles_total:,} , Angle (deg): {90-self.Azimuth:.1f} / {self.Azimuth:.1f} , kWp: {kWp_total:,.2f} kW, Anual Energy {self.kWh_total:,.2f} kWh")
     
@@ -1092,6 +1174,33 @@ class SolarPlanelPlacerApp:
     def bound(self,low, high, value):
         return max(low, min(high, value))
 
+    def haversine(self, lat1, lon1, lat2, lon2):
+        R = 6371  # Radius of the Earth in kilometers
+
+        dlat = math.radians(lat2 - lat1)
+        dlon = math.radians(lon2 - lon1)
+
+        a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+        distance = R * c  # Distance in kilometers
+
+        return distance
+    
+    def find_nearest_location(self, user_lat, user_lng, locations):
+        min_distance = float('inf')
+        nearest_location = None
+
+        for location in locations:
+            lat = location['lat']
+            lng = location['lng']
+            distance = self.haversine(user_lat, user_lng, lat, lng)
+
+            if distance < min_distance:
+                min_distance = distance
+                nearest_location = location
+
+        return nearest_location
 
 
 def main():
