@@ -9,6 +9,8 @@ import math
 import datetime
 import pytz
 from pysolar.solar import get_altitude, get_azimuth
+import matplotlib.pyplot as plt
+import calendar
 
 # Define panel_info as a global variable
 # Each entry contains (power, width, height) information for different solar panels
@@ -26,6 +28,19 @@ class SolarPlanelPlacerApp:
                                  "2023/06/23 09:00:00","2023/06/23 13:00:00","2023/06/23 16:00:00",
                                  "2023/09/23 09:00:00","2023/09/23 13:00:00","2023/09/23 16:00:00",
                                  "2023/12/23 09:00:00","2023/12/23 13:00:00","2023/12/23 16:00:00"]
+        self.monthly_percent = [8.732360594,
+                                8.321359862,
+                                9.466129905,
+                                9.541061671,
+                                8.783314195,
+                                7.957004153,
+                                7.821377658,
+                                7.810699881,
+                                7.263136007,
+                                7.707856034,
+                                7.939395188,
+                                8.656304852]
+        self.kWh_total = 0
 
         self.original_image = None
         
@@ -249,11 +264,39 @@ class SolarPlanelPlacerApp:
         self.pvout_entry.pack(side=tk.LEFT)
         # float(self.pvout_entry.get())
 
+        self.monthly_plot_button = tk.Button(frame8, text="Monthly Plot", command=self.monthly_plot_btn)
+        self.monthly_plot_button.pack(side=tk.LEFT)
+
         # Create a frame
         frame9 = tk.Frame(tab3)
         frame9.pack(side=tk.TOP)
         tk.Label(frame9, text="*note:\nTHAILAND= 1529.5\nBKK= 1433.2\nhttps://globalsolaratlas.info/map").pack(side=tk.LEFT)
 
+
+    def monthly_plot_btn(self):
+        annual_power = self.kWh_total
+
+        # Calculate monthly power production
+        monthly_power = [annual_power * (percent / 100) for percent in self.monthly_percent]
+
+        # Get month names
+        month_names = [calendar.month_abbr[i] for i in range(1, 13)]
+
+        # Add labels to the top of each bar
+        for month, power in zip(month_names, monthly_power):
+            plt.text(month, power + 10, f'{power:,.0f}', ha='center', va='bottom')
+
+        
+        # Plot the bar chart
+        plt.bar(month_names, monthly_power, color='blue')
+
+        # Add labels and title
+        plt.xlabel('Month')
+        plt.ylabel('Power Production (kWh)')
+        plt.title(f'Monthly Power Production (Total:{annual_power:,.0f} kWh)')
+
+        # Show the plot
+        plt.show()
 
     def browse_image_btn(self):
         # Open a file dialog to select an image file
@@ -941,8 +984,8 @@ class SolarPlanelPlacerApp:
         # in thailand azimuth angle can ignore
         PVSYST_ratio = 0.91
         kWp_to_kWh = float(self.pvout_entry.get()) # per year
-        kWh_total = kWp_total * kWp_to_kWh * PVSYST_ratio * tilt_ratio
-        self.total_rectangles_label.config(text=f"panel:{num_rectangles_horizontal}x{num_rectangles_vertical}= {num_rectangles_total:,} , Angle (deg): {90-self.Azimuth:.1f} / {self.Azimuth:.1f} , kWp: {kWp_total:,.2f} kW, Anual Energy {kWh_total:,.2f} kWh")
+        self.kWh_total = kWp_total * kWp_to_kWh * PVSYST_ratio * tilt_ratio
+        self.total_rectangles_label.config(text=f"panel:{num_rectangles_horizontal}x{num_rectangles_vertical}= {num_rectangles_total:,} , Angle (deg): {90-self.Azimuth:.1f} / {self.Azimuth:.1f} , kWp: {kWp_total:,.2f} kW, Anual Energy {self.kWh_total:,.2f} kWh")
     
     
     
