@@ -12,6 +12,7 @@ from pysolar.solar import get_altitude, get_azimuth
 import matplotlib.pyplot as plt
 import calendar
 import json
+import os
 
 # Define panel_info as a global variable
 # Each entry contains (power, width, height) information for different solar panels
@@ -22,6 +23,21 @@ panel_info = {
     "Jinko 500W": (500, 1.956, 1.310),
     "Jinko 600W": (600, 2.465, 1.134)
 }
+
+json_file_path = "panel_info.json"
+
+# Check if the JSON file exists
+if os.path.exists(json_file_path):
+    # Load panel_info from the JSON file
+    with open(json_file_path, "r") as json_file:
+        loaded_panel_info = json.load(json_file)
+        
+    # Update panel_info with the loaded data
+    panel_info.update(loaded_panel_info)
+else:
+    # Create the JSON file with default values
+    with open(json_file_path, "w") as json_file:
+        json.dump(panel_info, json_file, indent=4)
 
 class SolarPlanelPlacerApp:
     def __init__(self, master):
@@ -59,6 +75,7 @@ class SolarPlanelPlacerApp:
         self.prohibited_points = []
         self.tree_points = []
 
+        self.panel_permanent_sets = []
         self.prohibited_permanent_sets = []
         self.tree_permanent_sets = []
 
@@ -186,11 +203,14 @@ class SolarPlanelPlacerApp:
         self.calculate_button = tk.Button(frame2, text="PV Panel", command=self.calculate_panel_btn, state=tk.DISABLED)
         self.calculate_button.pack(side=tk.LEFT)
 
-        self.keepout_button = tk.Button(frame2, text="Keepout", command=self.add_keepout_btn, state=tk.DISABLED)
-        self.keepout_button.pack(side=tk.LEFT)
+        self.new_panel_button = tk.Button(frame2, text="New Panel", command=self.new_panel_btn, state=tk.DISABLED)
+        self.new_panel_button.pack(side=tk.LEFT)
 
         self.clear_button = tk.Button(frame2, text="Clear Panel", command=self.clear_canvas_btn)
         self.clear_button.pack(side=tk.LEFT)
+
+        self.keepout_button = tk.Button(frame2, text="Keepout", command=self.add_keepout_btn, state=tk.DISABLED)
+        self.keepout_button.pack(side=tk.LEFT)
 
         self.clear_all_button = tk.Button(frame2, text="Clear All", command=self.clear_all_canvas_btn)
         self.clear_all_button.pack(side=tk.LEFT)
@@ -573,10 +593,10 @@ class SolarPlanelPlacerApp:
         self.tree_checkbox["state"] = tk.DISABLED
         
 
-
     def clear_all_canvas_btn(self):
         self.points = []
         self.panel_points = []
+        self.panel_permanent_sets = []
         self.prohibited_points = []
         self.prohibited_permanent_sets = []
         self.tree_points = []
@@ -586,6 +606,7 @@ class SolarPlanelPlacerApp:
         self.already_draw_shadow = 0
         self.update_canvas()
         self.calculate_button["state"] = tk.DISABLED
+        self.new_panel_button["state"] = tk.DISABLED
         self.keepout_button["state"] = tk.DISABLED
         self.cal_shadow_button["state"] = tk.DISABLED
         self.tree_checkbox["state"] = tk.DISABLED
@@ -612,7 +633,7 @@ class SolarPlanelPlacerApp:
                 
                 pixel_distance = ((self.reference_points[-2][0] - self.reference_points[-1][0]) ** 2 + (
                             self.reference_points[-2][1] - self.reference_points[-1][1]) ** 2) ** 0.5
-                pixel_distance = pixel_distance/2
+                pixel_distance = pixel_distance/3
                 d_val = simpledialog.askfloat("Scale Factor", "Enter the scale factor (pixels to meters):")
                 if d_val is not None:
                     self.scale_factor = d_val / pixel_distance
@@ -620,6 +641,9 @@ class SolarPlanelPlacerApp:
                     # print(self.scale_factor)
                     # Remove the binding for mouse wheel event
                     self.canvas.unbind("<MouseWheel>")
+                    width = int(self.original_image.width * self.zoom_factor)
+                    height = int(self.original_image.height * self.zoom_factor)
+                    self.reference_points = [(int((x+2*width)/3), int((y+2*height)/3)) for x, y in self.reference_points]
                 else:
                     # If the user cancels, clear the points and canvas and return
                     self.clear_all_canvas_btn()
@@ -751,8 +775,8 @@ class SolarPlanelPlacerApp:
             return
     
         # Define the region of interest (ROI)
-        roi_width = 160
-        roi_height = 50
+        roi_width = 200
+        roi_height = 150
 
         # Resize the image based on the zoom factor
         width = int(self.original_image.width * self.zoom_factor)
@@ -760,18 +784,20 @@ class SolarPlanelPlacerApp:
         resized_image = self.original_image.resize((width, height), Image.Resampling.LANCZOS)
         self.tk_image = ImageTk.PhotoImage(resized_image)
 
-        # Extract the region of interest from the resized image
-        roi_image = resized_image.crop((width - roi_width, height - roi_height, width, height))
-        double_roi_image = roi_image.resize((roi_width * 2, roi_height * 2), Image.Resampling.LANCZOS)
-        self.double_roi_tk_image = ImageTk.PhotoImage(double_roi_image)
+        if not self.reference_points:
+            # Extract the region of interest from the resized image
+            roi_image = resized_image.crop((width - roi_width, height - roi_height, width, height))
+            triple_roi_image = roi_image.resize((roi_width * 3, roi_height * 3), Image.Resampling.LANCZOS)
+            self.triple_roi_tk_image = ImageTk.PhotoImage(triple_roi_image)
 
         # Update the canvas with the resized image
         self.canvas.config(width=width, height=height)
         self.canvas.delete("all")
         self.canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_image)
 
-        # Display the region of interest at the bottom right corner
-        self.canvas.create_image(width, height, anchor=tk.SE, image=self.double_roi_tk_image)
+        if not self.reference_points:
+            # Display the region of interest at the bottom right corner
+            self.canvas.create_image(width, height, anchor=tk.SE, image=self.triple_roi_tk_image)
 
         for area in self.points:
             x, y = area
@@ -821,7 +847,10 @@ class SolarPlanelPlacerApp:
 
         # draw panel
         if self.already_draw_panel == 1:
-            self.calculate_panel()
+            self.calculate_panel(self.panel_points)
+
+        for panel_permanent_set in self.panel_permanent_sets:
+            self.calculate_panel(panel_permanent_set)
         
         # draw trees shadow
         if self.already_draw_shadow == 1:
@@ -869,24 +898,33 @@ class SolarPlanelPlacerApp:
         self.already_draw_panel = 1
         self.cal_shadow_button["state"] = tk.NORMAL
         self.tree_checkbox["state"] = tk.NORMAL
+        self.new_panel_button["state"] = tk.NORMAL
         self.update_canvas()
+
+
+    def new_panel_btn(self):
+        self.already_draw_panel = 0
+        self.panel_permanent_sets.append(self.panel_points.copy())
+        self.panel_points = []
+        self.update_canvas()
+        self.new_panel_button["state"] = tk.DISABLED
         
 
-    def calculate_panel(self):
+    def calculate_panel(self, current_panel):
         selected_panel_type = self.panel_type_var.get()
         panel = panel_info.get(selected_panel_type)
         if not panel:
             # print("no panel")
             return
         
-        if len(self.panel_points)==0:
+        if len(current_panel)==0:
             # print("no panel points")
             return
         
         # Calculate approximate rectangle properties
         # Use the last four points to calculate rectangle properties
         # x_coords, y_coords = zip(*self.points[-4:])
-        points = np.array(self.panel_points[-4:], dtype=np.int32)
+        points = np.array(current_panel[-4:], dtype=np.int32)
 
         # Find the minimum area rectangle using OpenCV
         rect = cv2.minAreaRect(points)
