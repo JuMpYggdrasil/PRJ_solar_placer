@@ -24,20 +24,18 @@ panel_info = {
     "Jinko 600W": (600, 2.465, 1.134)
 }
 
-json_file_path = "panel_info.json"
+json_file_path = "parameter.json"
 
 # Check if the JSON file exists
 if os.path.exists(json_file_path):
     # Load panel_info from the JSON file
-    with open(json_file_path, "r") as json_file:
-        loaded_panel_info = json.load(json_file)
+    with open(json_file_path, "r", encoding='utf-8') as json_file:
+        jsondata = json.load(json_file)
+        loaded_panel_info = jsondata["panel_info"]
         
     # Update panel_info with the loaded data
     panel_info.update(loaded_panel_info)
-else:
-    # Create the JSON file with default values
-    with open(json_file_path, "w") as json_file:
-        json.dump(panel_info, json_file, indent=4)
+
 
 class SolarPlanelPlacerApp:
     def __init__(self, master):
@@ -313,18 +311,20 @@ class SolarPlanelPlacerApp:
     
         
     def get_pvout(self, user_lat, user_lng):
+        json_file_path = "parameter.json"
         # Load JSON data
-        with open('thai_pv_zipcode.json', 'r', encoding='utf-8') as file:
-            data = json.load(file)
+        with open(json_file_path, 'r', encoding='utf-8') as file:
+            jsondata = json.load(file)
+            thai_pv_zipcode = jsondata["thai_pv_zipcode"]
 
-        nearest_location = self.find_nearest_location(user_lat, user_lng, data)
+        nearest_location = self.find_nearest_location(user_lat, user_lng, thai_pv_zipcode)
 
         # if nearest_location:
         #     print(f"Nearest Location: District - {nearest_location['district']}, Province - {nearest_location['province']}")
         # else:
         #     print("No locations found.")
 
-        for location in data:
+        for location in thai_pv_zipcode:
             if nearest_location["province"] == location["province"]:
                 # print(location["pvout"])
                 return location["pvout"],location["province"]
@@ -419,7 +419,13 @@ class SolarPlanelPlacerApp:
         self.already_draw_shadow = 1
         self.update_canvas()
 
-    def calculate_panel_shadow(self, date_input_str, color="black", stipple="gray50"):
+    def calculate_panel_shadow(self, date_input_str, selected_points, color="black", stipple="gray50"):
+        if self.already_draw_shadow == 0:
+            return
+        
+        if len(selected_points) < 4:
+            return
+        
         lat_str = self.lat_entry.get()
         lon_str = self.lon_entry.get()
         lavitage_height_str = self.lavitage_entry.get()
@@ -461,36 +467,38 @@ class SolarPlanelPlacerApp:
         # Calculate shadow direction using azimuth
         shadow_direction_x = shadow_length * math.cos(math.radians(shadow_azimuth))
         shadow_direction_y = shadow_length * math.sin(math.radians(shadow_azimuth))
+
         
-        if self.already_draw_panel == 0:
-            return
 
         
         # Draw shadow lines from each corner of the rectangle
-        shadow_end_x1 = self.panel_points[-4][0] + shadow_direction_x
-        shadow_end_y1 = self.panel_points[-4][1] + shadow_direction_y
+        shadow_end_x1 = selected_points[-4][0] + shadow_direction_x
+        shadow_end_y1 = selected_points[-4][1] + shadow_direction_y
 
-        shadow_end_x2 = self.panel_points[-3][0] + shadow_direction_x
-        shadow_end_y2 = self.panel_points[-3][1] + shadow_direction_y
+        shadow_end_x2 = selected_points[-3][0] + shadow_direction_x
+        shadow_end_y2 = selected_points[-3][1] + shadow_direction_y
 
-        shadow_end_x3 = self.panel_points[-2][0] + shadow_direction_x
-        shadow_end_y3 = self.panel_points[-2][1] + shadow_direction_y
+        shadow_end_x3 = selected_points[-2][0] + shadow_direction_x
+        shadow_end_y3 = selected_points[-2][1] + shadow_direction_y
 
-        shadow_end_x4 = self.panel_points[-1][0] + shadow_direction_x
-        shadow_end_y4 = self.panel_points[-1][1] + shadow_direction_y
+        shadow_end_x4 = selected_points[-1][0] + shadow_direction_x
+        shadow_end_y4 = selected_points[-1][1] + shadow_direction_y
         
 
         # Draw shadow lines from each corner to corresponding points on the ground
-        # self.canvas.create_line(self.panel_points[-4][0], self.panel_points[-4][1], shadow_end_x1, shadow_end_y1, fill="black")
-        # self.canvas.create_line(self.panel_points[-3][0], self.panel_points[-3][1], shadow_end_x2, shadow_end_y2, fill="black")
-        # self.canvas.create_line(self.panel_points[-2][0], self.panel_points[-2][1], shadow_end_x3, shadow_end_y3, fill="black")
-        # self.canvas.create_line(self.panel_points[-1][0], self.panel_points[-1][1], shadow_end_x4, shadow_end_y4, fill="black")
+        # self.canvas.create_line(selected_points[-4][0], selected_points[-4][1], shadow_end_x1, shadow_end_y1, fill="black")
+        # self.canvas.create_line(selected_points[-3][0], selected_points[-3][1], shadow_end_x2, shadow_end_y2, fill="black")
+        # self.canvas.create_line(selected_points[-2][0], selected_points[-2][1], shadow_end_x3, shadow_end_y3, fill="black")
+        # self.canvas.create_line(selected_points[-1][0], selected_points[-1][1], shadow_end_x4, shadow_end_y4, fill="black")
         
         # Draw the rotated rectangle on the canvas
         self.canvas.create_polygon(shadow_end_x1, shadow_end_y1, shadow_end_x2, shadow_end_y2, shadow_end_x3, shadow_end_y3, shadow_end_x4, shadow_end_y4, fill=color, stipple=stipple)
 
     
     def calculate_trees_shadow(self, date_input_str, color="black", stipple="gray50"):
+        if self.already_draw_shadow == 0:
+            return
+
         lat_str = self.lat_entry.get()
         lon_str = self.lon_entry.get()
         lavitage_height_str = self.lavitage_entry.get()
@@ -527,9 +535,7 @@ class SolarPlanelPlacerApp:
         phi = math.radians(solar_altitude)
         phi = phi % (2 * math.pi)
 
-        
-        if self.already_draw_panel == 0:
-            return
+
 
         for tree_permanent_points in self.tree_permanent_sets:
             x0,y0 = tree_permanent_points[0]
@@ -662,10 +668,21 @@ class SolarPlanelPlacerApp:
                 else:
                     self.tree_points = []
 
-
-
         if len(self.points) > 4:
             self.points.pop(0)
+
+        if len(self.points) > 2:
+            area = self.calculate_area()
+            self.area_label.config(text=f"Area: {area:.2f} square meters")
+        else:
+            area = 0
+            self.area_label.config(text=f"Area: {area:.2f} square meters")
+        if len(self.points) > 1:
+            distance = self.calculate_distance()
+            self.distance_label.config(text=f"Distance: {distance:.2f} meters")
+        else:
+            distance = 0
+            self.distance_label.config(text=f"Distance: {distance:.2f} meters")
 
         if len(self.points) == 4:
             self.calculate_button["state"] = tk.NORMAL
@@ -680,13 +697,7 @@ class SolarPlanelPlacerApp:
             self.points = []
 
 
-        # If more than three points are clicked, draw a line to close the loop
-        if len(self.panel_points) > 1:
-            area = self.calculate_area()
-            self.area_label.config(text=f"Area: {area:.2f} square meters")
-            distance = self.calculate_distance()
-            self.distance_label.config(text=f"Distance: {distance:.2f} meters")
-            pass
+        
 
         
         self.update_canvas()
@@ -799,6 +810,49 @@ class SolarPlanelPlacerApp:
             # Display the region of interest at the bottom right corner
             self.canvas.create_image(width, height, anchor=tk.SE, image=self.triple_roi_tk_image)
 
+        
+        # Draw prohibited areas
+        for area in self.prohibited_points:
+            x, y = area
+            self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="pink")
+        
+        for prohibited_permanent_points in self.prohibited_permanent_sets:
+            # Draw prohibited areas
+            for area in prohibited_permanent_points:
+                x, y = area
+                self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="red")
+                
+            if len(prohibited_permanent_points)>=4:
+                self.canvas.create_polygon(prohibited_permanent_points[0][0], prohibited_permanent_points[0][1], prohibited_permanent_points[1][0], prohibited_permanent_points[1][1], prohibited_permanent_points[2][0], prohibited_permanent_points[2][1], prohibited_permanent_points[3][0], prohibited_permanent_points[3][1], fill="red", stipple="gray50")
+
+        # draw panel shadow
+        if self.already_draw_panel == 1:    
+            for shadow_datetime in self.shadow_datetimes:
+                self.calculate_panel_shadow(shadow_datetime,self.panel_points)
+
+        for panel_permanent_points in self.panel_permanent_sets:
+            for shadow_datetime in self.shadow_datetimes:
+                self.calculate_panel_shadow(shadow_datetime,panel_permanent_points)
+
+        # draw panel
+        if self.already_draw_panel == 1:
+            self.calculate_panel(self.panel_points)
+
+        for panel_permanent_set in self.panel_permanent_sets:
+            self.calculate_panel(panel_permanent_set)
+        
+        # draw trees shadow
+        for shadow_datetime in self.shadow_datetimes:
+            self.calculate_trees_shadow(shadow_datetime)
+
+        # # draw trees
+        for tree_permanent_points in self.tree_permanent_sets:
+            x0,y0 = tree_permanent_points[0]
+            x1,y1 = tree_permanent_points[1]
+            r = math.dist([x0, y0], [x1, y1])
+            self.draw_circle(x0,y0,r,self.canvas,fill="lawn green",outline="")
+            self.canvas.create_text(x0, y0, text=f"{tree_permanent_points[2]:.1f} m", fill="black", font=('Helvetica 10 bold'))
+
         for area in self.points:
             x, y = area
             self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="yellow")
@@ -826,57 +880,20 @@ class SolarPlanelPlacerApp:
                 self.canvas.create_line(x0, y0,x1, y1, fill="orange")
             self.canvas.create_line(self.panel_points[0][0], self.panel_points[0][1], self.panel_points[-1][0], self.panel_points[-1][1], fill="orange")
 
-        # Draw prohibited areas
-        for area in self.prohibited_points:
-            x, y = area
-            self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="pink")
-        
-        for prohibited_permanent_points in self.prohibited_permanent_sets:
-            # Draw prohibited areas
-            for area in prohibited_permanent_points:
-                x, y = area
-                self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="red")
-                
-            if len(prohibited_permanent_points)>=4:
-                self.canvas.create_polygon(prohibited_permanent_points[0][0], prohibited_permanent_points[0][1], prohibited_permanent_points[1][0], prohibited_permanent_points[1][1], prohibited_permanent_points[2][0], prohibited_permanent_points[2][1], prohibited_permanent_points[3][0], prohibited_permanent_points[3][1], fill="red", stipple="gray50")
 
-        # draw panel shadow
-        if self.already_draw_shadow == 1:
-            for shadow_datetime in self.shadow_datetimes:
-                self.calculate_panel_shadow(shadow_datetime)
-
-        # draw panel
-        if self.already_draw_panel == 1:
-            self.calculate_panel(self.panel_points)
-
-        for panel_permanent_set in self.panel_permanent_sets:
-            self.calculate_panel(panel_permanent_set)
-        
-        # draw trees shadow
-        if self.already_draw_shadow == 1:
-            for shadow_datetime in self.shadow_datetimes:
-                self.calculate_trees_shadow(shadow_datetime)
-
-        # # draw trees
-        for tree_permanent_points in self.tree_permanent_sets:
-            x0,y0 = tree_permanent_points[0]
-            x1,y1 = tree_permanent_points[1]
-            r = math.dist([x0, y0], [x1, y1])
-            self.draw_circle(x0,y0,r,self.canvas,fill="lawn green",outline="")
-            self.canvas.create_text(x0, y0, text=f"{tree_permanent_points[2]:.1f} m", fill="black", font=('Helvetica 10 bold'))
         
 
 
     def calculate_area(self):
         # Shoelace formula to calculate the area of a polygon
         area_pixels = 0
-        num_points = len(self.panel_points)
+        num_points = len(self.points)
 
-        for i in range(2, num_points - 1):
-            area_pixels += (self.panel_points[i][0] * self.panel_points[i + 1][1] - self.panel_points[i + 1][0] * self.panel_points[i][1])
+        for i in range(num_points - 1):
+            area_pixels += (self.points[i][0] * self.points[i + 1][1] - self.points[i + 1][0] * self.points[i][1])
 
         # Add the last edge (closing the loop)
-        area_pixels += (self.panel_points[num_points - 1][0] * self.panel_points[2][1] - self.panel_points[2][0] * self.panel_points[num_points - 1][1])
+        area_pixels += (self.points[-1][0] * self.points[0][1] - self.points[0][0] * self.points[-1][1])
 
         # Take the absolute value and divide by 2
         area_pixels = abs(area_pixels) / 2.0
@@ -888,8 +905,7 @@ class SolarPlanelPlacerApp:
 
     def calculate_distance(self):
         # Calculate the distance between the last two points in meters
-        pixel_distance = (
-                (self.panel_points[-2][0] - self.panel_points[-1][0]) ** 2 + (self.panel_points[-2][1] - self.panel_points[-1][1]) ** 2) ** 0.5
+        pixel_distance = ((self.points[-2][0] - self.points[-1][0]) ** 2 + (self.points[-2][1] - self.points[-1][1]) ** 2) ** 0.5
         distance_in_meters = pixel_distance * self.scale_factor
         return distance_in_meters
 
