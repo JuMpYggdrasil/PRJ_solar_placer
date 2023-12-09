@@ -876,29 +876,37 @@ class SolarPlanelPlacerApp:
         panels_tempo_count = 0
         panels_permanent_count = 0
         # draw panel
-        if self.already_draw_panel == 1:
-            panels_count, angle = self.calculate_panel(self.panel_points)
-            panels_tempo_count = panels_count
-            angle = min(angle, 90 - angle)
+        draw_cond = self.already_draw_panel == 1
+        point_cond = len(self.panel_points) >= 4
+        if draw_cond and point_cond:
+            (panels_count, angle) = self.calculate_panel(self.panel_points)
+            if panels_count:
+                panels_tempo_count = panels_count
+                angle = min(angle, 90 - angle)
 
         for panel_permanent_set in self.panel_permanent_sets:
-            panels_count, _ = self.calculate_panel(panel_permanent_set)
-            panels_permanent_count += panels_count
+            (panels_count, _) = self.calculate_panel(panel_permanent_set)
+            if panels_count:
+                panels_permanent_count += panels_count
 
         total_panel_count = panels_tempo_count + panels_permanent_count
         selected_panel_type = self.panel_type_var.get()
         panel_power, _, _ = panel_info.get(selected_panel_type)
 
         kWp_total = panel_power * total_panel_count /1000
+        kWp_tempo_total = panel_power * panels_tempo_count /1000
+        kWp_permanent_total = panel_power * panels_permanent_count /1000
         tilt_ratio = self.tilt_calcutation(float(self.tilt_angle_entry.get()))
         PVSYST_ratio = 0.87
         try:
             kWp_to_kWh = float(self.pvout_entry.get()) # per year
-        except ValueError:
+        except:
             kWp_to_kWh = 0
         self.kWh_total = kWp_total * kWp_to_kWh * PVSYST_ratio * tilt_ratio
-        self.total_rectangles_label.config(text=f"amount of panels {panels_permanent_count} + {panels_tempo_count} = {total_panel_count:,} , Azimuth angle(deg): {angle:,.2f} , kWp: {kWp_total:,.2f} kW, Anual Energy {self.kWh_total:,.2f} kWh")
-    
+        try:
+            self.total_rectangles_label.config(text=f"amount of panels {panels_permanent_count} + {panels_tempo_count} = {total_panel_count:,} , Azimuth angle(deg): {angle:,.2f} , kWp: {kWp_permanent_total} + {kWp_tempo_total} = {kWp_total:,.2f} kW, Anual Energy {self.kWh_total:,.2f} kWh")
+        except:
+            pass
         
         # draw trees shadow
         for shadow_datetime in self.shadow_datetimes:
@@ -990,11 +998,11 @@ class SolarPlanelPlacerApp:
         panel = panel_info.get(selected_panel_type)
         if not panel:
             # print("no panel")
-            return
+            return (None,None)
         
-        if len(current_panel)==0:
+        if len(current_panel) < 4:
             # print("no panel points")
-            return
+            return (None,None)
         
         # Calculate approximate rectangle properties
         # Use the last four points to calculate rectangle properties
@@ -1022,7 +1030,7 @@ class SolarPlanelPlacerApp:
         self.draw_rotated_rectangle(center, size, angle)
         self.draw_rotated_angle(center, size, angle)
         panel_count = self.draw_small_rectangles(center, size, angle, panel)
-        return panel_count, angle
+        return (panel_count, angle)
         
     def draw_rotated_rectangle(self, center, size, angle, color="lightblue", stipple="gray50",scaled=1):
         # Calculate the coordinates of the four corners of the rotated rectangle
