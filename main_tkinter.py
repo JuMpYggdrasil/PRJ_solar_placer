@@ -15,6 +15,8 @@ import calendar
 import json
 import os
 
+jsondata = None
+
 # Define panel_info as a global variable
 # Each entry contains (power, width, height) information for different solar panels
 panel_info = {
@@ -56,7 +58,9 @@ class SolarPlanelPlacerApp:
                                 7.707856034,
                                 7.939395188,
                                 8.656304852]
-
+        self.tz = 'Asia/Bangkok'
+        self.Latitude = 13.765733827940576
+        self.Longitude = 100.50257304756634
 
         self.kWh_total = 0
 
@@ -80,7 +84,6 @@ class SolarPlanelPlacerApp:
 
 
         # Initial Variable & Flag
-        self.Azimuth = 0
         self.already_draw_panel = 0
         self.already_draw_shadow = 0
 
@@ -100,7 +103,7 @@ class SolarPlanelPlacerApp:
         
         # Create a notebook (tabs container)
         self.notebook = ttk.Notebook(self.master)
-        self.notebook.pack()
+        self.notebook.pack(expand=True, fill="both")
         
         # Create and add the first tab (Tab 1)
         tab1 = ttk.Frame(self.notebook)
@@ -237,13 +240,13 @@ class SolarPlanelPlacerApp:
         tk.Label(frame5, text="Latitude:").pack(side=tk.LEFT)
         self.lat_entry = tk.Entry(frame5, width=25)
         # self.lat_entry.insert(0, "13.765733827940576")  # Default value
-        self.lat_entry.insert(0, "13.008111714871003")  # Default value
+        self.lat_entry.insert(0, self.Latitude)  # Default value
         self.lat_entry.pack(side=tk.LEFT)
 
         tk.Label(frame5, text="Longitude:").pack(side=tk.LEFT)
         self.lon_entry = tk.Entry(frame5, width=25)
         # self.lon_entry.insert(0, "100.50257304756634")  # Default value
-        self.lon_entry.insert(0, "100.99718418384403")  # Default value
+        self.lon_entry.insert(0, self.Longitude)  # Default value
         self.lon_entry.pack(side=tk.LEFT)
         
         tk.Label(frame5, text="lavitage from ground (m):").pack(side=tk.LEFT)
@@ -293,6 +296,7 @@ class SolarPlanelPlacerApp:
         frame8 = tk.Frame(tab3)
         frame8.pack(side=tk.TOP)
 
+
         # Entry widget for small_gap_height
         tk.Label(frame8, text="Specific photovoltaic power output per year (kWh/kWp):").pack(side=tk.LEFT)
         self.pvout_entry = tk.Entry(frame8)
@@ -300,16 +304,40 @@ class SolarPlanelPlacerApp:
         self.pvout_entry.pack(side=tk.LEFT)
         # float(self.pvout_entry.get())
 
+        # Checkbox for prohibiting points
+        self.pvout_en_var = tk.IntVar()
+        self.pvout_en_var.set(1)
+        self.pvout_en_checkbox = tk.Checkbutton(frame8, text="", variable=self.pvout_en_var, command=self.toggle_pvout_en)
+        self.pvout_en_checkbox.pack(side=tk.LEFT)
+
         self.monthly_plot_button = tk.Button(frame8, text="Monthly Plot", command=self.monthly_plot_btn)
         self.monthly_plot_button.pack(side=tk.LEFT)
 
         # Create a frame
         frame9 = tk.Frame(tab3)
         frame9.pack(side=tk.TOP)
-        tk.Label(frame9, text="*note:\nTHAILAND= 1529.5\nBKK= 1433.2\nhttps://globalsolaratlas.info/map").pack(side=tk.LEFT)
+        tk.Label(frame9, text="https://globalsolaratlas.info/map parameter.json").pack(side=tk.LEFT)
 
         self.update_lat_lng()
-    
+        # Bind the tab selection event to the on_tab_selected function
+        self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_selected)
+
+    def toggle_pvout_en(self):
+        if self.pvout_en_var.get() == 1:
+            self.pvout_entry["state"] = tk.NORMAL
+        else:
+            self.pvout_entry["state"] = tk.DISABLED
+
+    def on_tab_selected(self, event):
+        # Get the selected tab index
+        selected_tab_index = self.notebook.index(self.notebook.select())
+
+        # Print or do something based on the selected tab index
+        # print(f"Tab {selected_tab_index + 1} selected")
+
+        self.update_canvas()
+        self.update_lat_lng()
+
         
     def get_pvout(self, user_lat, user_lng):
         json_file_path = "parameter.json"
@@ -395,22 +423,41 @@ class SolarPlanelPlacerApp:
         self.update_lat_lng()
 
 
-    def update_lat_lng(self):
-        try:
-            user_lat = float(self.lat_entry.get())
-        except ValueError:
-            user_lat = 0
-        try:
-            user_lng = float(self.lon_entry.get())
-        except ValueError:
-            user_lng = 0    
 
-        self.pvout, self.province = self.get_pvout(user_lat,user_lng)
+    def update_lat_lng(self):
+        lat_str = self.lat_entry.get()
+        if "," in lat_str:
+            # Split the string by comma and strip spaces, then convert to float
+            user_lat, user_lng = map(lambda s: float(s.strip()), lat_str.split(','))
+
+            if self.pvout_en_var.get() == 1:
+                self.lat_entry.delete(0,len(self.lat_entry.get()))
+                self.lat_entry.insert(0,user_lat)
+
+                self.lon_entry.delete(0,len(self.lon_entry.get()))
+                self.lon_entry.insert(0,user_lng)
+        else:
+            try:
+                user_lat = float(self.lat_entry.get())
+            except ValueError:
+                user_lat = 0
+            try:
+                user_lng = float(self.lon_entry.get())
+            except ValueError:
+                user_lng = 0
+        
+        self.Latitude = user_lat
+        self.Longitude = user_lng
+
+        self.pvout, self.province = self.get_pvout(self.Latitude,self.Longitude)
         if self.pvout:
             self.province_label.config(text=f"province: {self.province}")
 
-            self.pvout_entry.delete(0,len(self.pvout_entry.get()))
-            self.pvout_entry.insert(0,self.pvout)
+            if self.pvout_en_var.get() == 1:
+                self.pvout_entry.delete(0,len(self.pvout_entry.get()))
+                self.pvout_entry.insert(0,self.pvout)
+        
+
 
     def toggle_tree_cb(self):
         pass
@@ -427,8 +474,7 @@ class SolarPlanelPlacerApp:
         if len(selected_points) < 4:
             return
         
-        lat_str = self.lat_entry.get()
-        lon_str = self.lon_entry.get()
+        self.update_lat_lng()
         lavitage_height_str = self.lavitage_entry.get()
         
         local_datetime = datetime.datetime.strptime(date_input_str, "%Y/%m/%d %H:%M:%S")
@@ -436,23 +482,19 @@ class SolarPlanelPlacerApp:
             color="gray2"
         else:
             color="gray4"
-        pytz.timezone('Asia/Bangkok')
+        pytz.timezone(self.tz)
 
         # Convert input to appropriate types
         # -Convert local to UTC
         date = local_datetime.astimezone(pytz.utc)
         try:
-            lat = float(lat_str)
-            lon = float(lon_str)
             lavitage_height = float(lavitage_height_str)
         except ValueError:
-            lat = 0
-            lon = 0
             lavitage_height = 0
 
         # Calculate solar position using pysolar
-        solar_altitude = get_altitude(lat, lon, date)
-        solar_azimuth = get_azimuth(lat, lon, date)
+        solar_altitude = get_altitude(self.Latitude, self.Longitude, date)
+        solar_azimuth = get_azimuth(self.Latitude, self.Longitude, date)
         # print(solar_azimuth)
         # print(solar_altitude)
 
@@ -500,8 +542,7 @@ class SolarPlanelPlacerApp:
         if self.already_draw_shadow == 0:
             return
 
-        lat_str = self.lat_entry.get()
-        lon_str = self.lon_entry.get()
+        self.update_lat_lng()
         lavitage_height_str = self.lavitage_entry.get()
         
         local_datetime = datetime.datetime.strptime(date_input_str, "%Y/%m/%d %H:%M:%S")
@@ -509,24 +550,20 @@ class SolarPlanelPlacerApp:
             color="gray2"
         else:
             color="gray4"
-        pytz.timezone('Asia/Bangkok')
+        pytz.timezone(self.tz)
 
         # Convert input to appropriate types
         # -Convert local to UTC
         date = local_datetime.astimezone(pytz.utc)
         
         try:
-            lat = float(lat_str)
-            lon = float(lon_str)
             lavitage_height = float(lavitage_height_str)
         except ValueError:
-            lat = 0
-            lon = 0
             lavitage_height = 0
 
         # Calculate solar position using pysolar
-        solar_altitude = get_altitude(lat, lon, date)
-        solar_azimuth = get_azimuth(lat, lon, date)
+        solar_altitude = get_altitude(self.Latitude, self.Longitude, date)
+        solar_azimuth = get_azimuth(self.Latitude, self.Longitude, date)
         # print(solar_azimuth)
         # print(solar_altitude)
 
@@ -835,12 +872,33 @@ class SolarPlanelPlacerApp:
             for shadow_datetime in self.shadow_datetimes:
                 self.calculate_panel_shadow(shadow_datetime,panel_permanent_points)
 
+        angle = 0
+        panels_tempo_count = 0
+        panels_permanent_count = 0
         # draw panel
         if self.already_draw_panel == 1:
-            self.calculate_panel(self.panel_points)
+            panels_count, angle = self.calculate_panel(self.panel_points)
+            panels_tempo_count = panels_count
+            angle = min(angle, 90 - angle)
 
         for panel_permanent_set in self.panel_permanent_sets:
-            self.calculate_panel(panel_permanent_set)
+            panels_count, _ = self.calculate_panel(panel_permanent_set)
+            panels_permanent_count += panels_count
+
+        total_panel_count = panels_tempo_count + panels_permanent_count
+        selected_panel_type = self.panel_type_var.get()
+        panel_power, _, _ = panel_info.get(selected_panel_type)
+
+        kWp_total = panel_power * total_panel_count /1000
+        tilt_ratio = self.tilt_calcutation(float(self.tilt_angle_entry.get()))
+        PVSYST_ratio = 0.87
+        try:
+            kWp_to_kWh = float(self.pvout_entry.get()) # per year
+        except ValueError:
+            kWp_to_kWh = 0
+        self.kWh_total = kWp_total * kWp_to_kWh * PVSYST_ratio * tilt_ratio
+        self.total_rectangles_label.config(text=f"amount of panels {panels_permanent_count} + {panels_tempo_count} = {total_panel_count:,} , Azimuth angle(deg): {angle:,.2f} , kWp: {kWp_total:,.2f} kW, Anual Energy {self.kWh_total:,.2f} kWh")
+    
         
         # draw trees shadow
         for shadow_datetime in self.shadow_datetimes:
@@ -949,7 +1007,6 @@ class SolarPlanelPlacerApp:
 
         # Draw boundary
         center, size, angle = rect
-        self.Azimuth = 90-angle
         # Draw the rotated rectangle on the canvas
         self.draw_rotated_rectangle(center, size, angle, color="gold")
         
@@ -964,7 +1021,8 @@ class SolarPlanelPlacerApp:
         # Draw the rotated rectangle on the canvas
         self.draw_rotated_rectangle(center, size, angle)
         self.draw_rotated_angle(center, size, angle)
-        self.draw_small_rectangles(center, size, angle,panel)
+        panel_count = self.draw_small_rectangles(center, size, angle, panel)
+        return panel_count, angle
         
     def draw_rotated_rectangle(self, center, size, angle, color="lightblue", stipple="gray50",scaled=1):
         # Calculate the coordinates of the four corners of the rotated rectangle
@@ -1023,7 +1081,7 @@ class SolarPlanelPlacerApp:
 
 
 
-    def draw_small_rectangles(self, center, size, angle,panel):
+    def draw_small_rectangles(self, center, size, angle, panel):
         intersection_count = 0
         panel_power,panel_width,panel_height = panel
 
@@ -1113,39 +1171,43 @@ class SolarPlanelPlacerApp:
 
         # Update the label to display the total number of rectangles
         num_rectangles_total = num_rectangles_horizontal * num_rectangles_vertical - intersection_count
-        kWp_total = panel_power * num_rectangles_total /1000
-        tilt_ratio = self.tilt_calcutation(float(self.tilt_angle_entry.get()))
-        # in thailand azimuth angle can ignore
-        PVSYST_ratio = 0.91
-        try:
-            kWp_to_kWh = float(self.pvout_entry.get()) # per year
-        except ValueError:
-            kWp_to_kWh = 0
-        self.kWh_total = kWp_total * kWp_to_kWh * PVSYST_ratio * tilt_ratio
-        self.total_rectangles_label.config(text=f"panel:{num_rectangles_horizontal}x{num_rectangles_vertical}= {num_rectangles_total:,} , Angle (deg): {90-self.Azimuth:.1f} / {self.Azimuth:.1f} , kWp: {kWp_total:,.2f} kW, Anual Energy {self.kWh_total:,.2f} kWh")
-    
+        # kWp_total = panel_power * num_rectangles_total /1000
+
+
+
+        return num_rectangles_total
     
     
     def tilt_calcutation(self,angle):
-        tilt_ratio_value = 1.00
-        if 0 < angle and angle <= 2:
-            tilt_ratio_value = 1.00
-        if 2 < angle and angle <= 5:
-            tilt_ratio_value = 1.01
-        if 5 < angle and angle <= 10:
-            tilt_ratio_value = 1.02
-        if 10 < angle and angle <= 22:
-            tilt_ratio_value = 1.03
-        if 22 < angle and angle <= 27:
-            tilt_ratio_value = 1.02
-        if 27 < angle and angle <= 31:
-            tilt_ratio_value = 1.01
-        if 31 < angle and angle <= 34:
-            tilt_ratio_value = 1.00
-        if 34 < angle:
-            tilt_ratio_value = 0.99
+        self.update_lat_lng()
 
-        return tilt_ratio_value
+        date_input_str = "2021/09/21 12:10:00"
+        
+        local_datetime = datetime.datetime.strptime(date_input_str, "%Y/%m/%d %H:%M:%S")
+        pytz.timezone(self.tz)
+
+        # Convert input to appropriate types
+        # -Convert local to UTC
+        date = local_datetime.astimezone(pytz.utc)
+
+        # Calculate solar position using pysolar
+        solar_altitude = get_altitude(self.Latitude, self.Longitude, date)
+        # solar_azimuth = get_azimuth(self.Latitude, self.Longitude, date)
+        solar_zenith = 90 - solar_altitude
+        
+        TF = self.calculate_transposition_factor(angle, Z_ref=solar_zenith)
+        
+        return TF
+    
+    def calculate_transposition_factor(self, beta, Z_ref=14.47):
+        # Convert angles from degrees to radians
+        beta = math.radians(beta) # the tilt angle of the solar panel
+        Z_ref = math.radians(Z_ref)
+
+        # Calculate transposition factor
+        TF = (math.cos(beta) * math.cos(Z_ref) + math.sin(beta) * math.sin(Z_ref)) / math.cos(Z_ref)
+        
+        return TF
 
     def check_hit_detection(self, rect1, rect2):
         # Check for precise intersection between two rotated rectangles
