@@ -352,6 +352,11 @@ class SolarPlanelPlacerApp:
         self.walk_gap_entry.bind("<FocusOut>", self.entry_changed1)
         self.setback_entry.bind("<FocusOut>", self.entry_changed1)
 
+        self.gap_width_entry.bind("<Return>", self.entry_changed1)
+        self.gap_height_entry.bind("<Return>", self.entry_changed1)
+        self.walk_gap_entry.bind("<Return>", self.entry_changed1)
+        self.setback_entry.bind("<Return>", self.entry_changed1)
+
         # Checkbox for prohibiting points
         self.panel_rotate_var = tk.IntVar()
         self.panel_rotate_checkbox = tk.Checkbutton(frame4, text="panel rotation", variable=self.panel_rotate_var, command=self.toggle_panel_rotation)
@@ -462,6 +467,8 @@ class SolarPlanelPlacerApp:
 
         # Bind the <FocusOut> event to the callback function
         self.lat_entry.bind("<FocusOut>", self.entry_changed2)
+        self.lat_entry.bind("<Return>", self.entry_changed2)
+
         self.lon_entry.bind("<FocusOut>", self.entry_changed2)
         self.lavitage_entry.bind("<FocusOut>", self.entry_changed2)
         self.tilt_angle_entry.bind("<FocusOut>", self.entry_changed2)
@@ -523,11 +530,6 @@ class SolarPlanelPlacerApp:
         # Bind the tab selection event to the on_tab_selected function
         self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_selected)
 
-    def toggle_pvout_en(self):
-        if self.pvout_en_var.get() == 1:
-            self.pvout_entry["state"] = tk.NORMAL
-        else:
-            self.pvout_entry["state"] = tk.DISABLED
 
     def on_tab_selected(self, event):
         # Get the selected tab index
@@ -598,6 +600,23 @@ class SolarPlanelPlacerApp:
         # Make the browse_button invisible
         self.browse_button.pack_forget()
 
+    # only use in browse_image_btn()
+    def load_image(self, image_path):
+        # Load the original image
+        self.original_image = Image.open(image_path)
+
+        # Resize the image to half its original size
+        new_size = (int(self.original_image.width *7/10), int(self.original_image.height *7/10))
+        self.original_image = self.original_image.resize(new_size, Image.Resampling.LANCZOS)
+
+        self.tk_image = ImageTk.PhotoImage(self.original_image)
+
+        # Display the original image on the canvas
+        self.canvas.config(width=self.original_image.width, height=self.original_image.height)
+
+        # Display the original image on the canvas
+        self.canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_image)
+
     def entry_changed1(self, event):
         # This function will be called when the entry loses focus
         # You can access the entry widget using 'event.widget'
@@ -609,8 +628,9 @@ class SolarPlanelPlacerApp:
         # Do something with the current value, e.g., print it
         # print(f"Value changed to: {current_value}")
 
-        self.update_canvas()
+        
         self.update_panel_setting(self.pv1)
+        self.update_canvas()
 
     def entry_changed2(self, event):
         # This function will be called when the entry loses focus
@@ -625,6 +645,24 @@ class SolarPlanelPlacerApp:
         self.update_lat_lng()
         self.update_panel_setting(self.pv1)
 
+
+
+    def toggle_tree_cb(self):
+        pass
+
+    def toggle_pvout_en(self):
+        if self.pvout_en_var.get() == 1:
+            self.pvout_entry["state"] = tk.NORMAL
+        else:
+            self.pvout_entry["state"] = tk.DISABLED
+
+    def toggle_panel_rotation(self):
+        self.update_panel_setting(self.pv1)
+        self.update_canvas()
+
+    def toggle_walk_gap_rotation(self):
+        self.update_panel_setting(self.pv1)
+        self.update_canvas()
 
 
     def update_lat_lng(self):
@@ -661,175 +699,22 @@ class SolarPlanelPlacerApp:
                 self.pvout_entry.insert(0,self.pvout)
         
 
-
-    def toggle_tree_cb(self):
-        pass
-        
-        
     def calculate_shadows_btn(self, color="black", stipple="gray50"):
         self.already_draw_shadow = 1
         self.update_canvas()
 
-    def calculate_panel_shadow(self, date_input_str, selected_points, color="black", stipple="gray50"):
-        if self.already_draw_shadow == 0:
-            return
-        
-        if len(selected_points) < 4:
-            return
-        
-        self.update_lat_lng()
-        lavitage_height_str = self.lavitage_entry.get()
-        
-        local_datetime = datetime.datetime.strptime(date_input_str, "%Y/%m/%d %H:%M:%S")
-        if local_datetime.month <7:
-            color="gray2"
-        else:
-            color="gray4"
-        pytz.timezone(self.tz)
-
-        # Convert input to appropriate types
-        # -Convert local to UTC
-        date = local_datetime.astimezone(pytz.utc)
-        try:
-            lavitage_height = float(lavitage_height_str)
-        except ValueError:
-            lavitage_height = 0
-
-        # Calculate solar position using pysolar
-        solar_altitude = get_altitude(self.Latitude, self.Longitude, date)
-        solar_azimuth = get_azimuth(self.Latitude, self.Longitude, date)
-        # print(solar_azimuth)
-        # print(solar_altitude)
-
-        shadow_azimuth = solar_azimuth + 90
-
-        # Calculate shadow length
-        phi = math.radians(solar_altitude)
-        phi = phi % (2 * math.pi)
-        shadow_length = (lavitage_height / math.tan(phi)) / self.scale_factor
-        
-        # print(shadow_length)
-
-        # Calculate shadow direction using azimuth
-        shadow_direction_x = shadow_length * math.cos(math.radians(shadow_azimuth))
-        shadow_direction_y = shadow_length * math.sin(math.radians(shadow_azimuth))
-
-        
-
-        
-        # Draw shadow lines from each corner of the rectangle
-        shadow_end_x1 = selected_points[-4][0] + shadow_direction_x
-        shadow_end_y1 = selected_points[-4][1] + shadow_direction_y
-
-        shadow_end_x2 = selected_points[-3][0] + shadow_direction_x
-        shadow_end_y2 = selected_points[-3][1] + shadow_direction_y
-
-        shadow_end_x3 = selected_points[-2][0] + shadow_direction_x
-        shadow_end_y3 = selected_points[-2][1] + shadow_direction_y
-
-        shadow_end_x4 = selected_points[-1][0] + shadow_direction_x
-        shadow_end_y4 = selected_points[-1][1] + shadow_direction_y
-        
-
-        # Draw shadow lines from each corner to corresponding points on the ground
-        # self.canvas.create_line(selected_points[-4][0], selected_points[-4][1], shadow_end_x1, shadow_end_y1, fill="black")
-        # self.canvas.create_line(selected_points[-3][0], selected_points[-3][1], shadow_end_x2, shadow_end_y2, fill="black")
-        # self.canvas.create_line(selected_points[-2][0], selected_points[-2][1], shadow_end_x3, shadow_end_y3, fill="black")
-        # self.canvas.create_line(selected_points[-1][0], selected_points[-1][1], shadow_end_x4, shadow_end_y4, fill="black")
-        
-        # Draw the rotated rectangle on the canvas
-        self.canvas.create_polygon(shadow_end_x1, shadow_end_y1, shadow_end_x2, shadow_end_y2, shadow_end_x3, shadow_end_y3, shadow_end_x4, shadow_end_y4, fill=color, stipple=stipple)
-
     
-    def calculate_trees_shadow(self, date_input_str, color="black", stipple="gray50"):
-        if self.already_draw_shadow == 0:
-            return
-
-        self.update_lat_lng()
-        lavitage_height_str = self.lavitage_entry.get()
-        
-        local_datetime = datetime.datetime.strptime(date_input_str, "%Y/%m/%d %H:%M:%S")
-        if local_datetime.month <7:
-            color="gray2"
-        else:
-            color="gray4"
-        pytz.timezone(self.tz)
-
-        # Convert input to appropriate types
-        # -Convert local to UTC
-        date = local_datetime.astimezone(pytz.utc)
-        
-        try:
-            lavitage_height = float(lavitage_height_str)
-        except ValueError:
-            lavitage_height = 0
-
-        # Calculate solar position using pysolar
-        solar_altitude = get_altitude(self.Latitude, self.Longitude, date)
-        solar_azimuth = get_azimuth(self.Latitude, self.Longitude, date)
-        # print(solar_azimuth)
-        # print(solar_altitude)
-
-        shadow_azimuth = solar_azimuth + 90
-
-        # Calculate shadow length
-        phi = math.radians(solar_altitude)
-        phi = phi % (2 * math.pi)
-
-
-
-        for tree_permanent_points in self.tree_permanent_sets:
-            x0,y0 = tree_permanent_points[0]
-            x1,y1 = tree_permanent_points[1]
-            r = math.dist([x0, y0], [x1, y1])
-
-            dh = self.bound(tree_permanent_points[2] - lavitage_height, 0,100)
-
-            tree_shadow_length = (dh / math.tan(phi)) / self.scale_factor
-
-            # Calculate shadow direction using azimuth
-            tree_shadow_direction_x = tree_shadow_length * math.cos(math.radians(shadow_azimuth))
-            tree_shadow_direction_y = tree_shadow_length * math.sin(math.radians(shadow_azimuth))
-
-            shadow_x0 = x0 + tree_shadow_direction_x
-            shadow_y0 = y0 + tree_shadow_direction_y
-
-            self.draw_circle(shadow_x0,shadow_y0,r,self.canvas,fill="black")
-            
-
     def hide_shadows_btn(self):
         self.already_draw_shadow = 0
         self.update_canvas()
+
 
     def clear_trees_btn(self):
         self.tree_points = []
         self.tree_permanent_sets = []
         self.update_canvas()
-        
-    def toggle_panel_rotation(self):
-        self.update_canvas()
 
-    def toggle_walk_gap_rotation(self):
-        self.update_canvas()
 
-    def load_image(self, image_path):
-        # Load the original image
-        self.original_image = Image.open(image_path)
-
-        # Resize the image to half its original size
-        new_size = (int(self.original_image.width *7/10), int(self.original_image.height *7/10))
-        self.original_image = self.original_image.resize(new_size, Image.Resampling.LANCZOS)
-
-        self.tk_image = ImageTk.PhotoImage(self.original_image)
-
-        # Display the original image on the canvas
-        self.canvas.config(width=self.original_image.width, height=self.original_image.height)
-
-        # Display the original image on the canvas
-        self.canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_image)
-        
-
-        
     def clear_canvas_btn(self):
         self.points = []
         self.pv1.panel_points = []
@@ -838,7 +723,7 @@ class SolarPlanelPlacerApp:
         self.update_canvas()
         self.cal_shadow_button["state"] = tk.DISABLED
         self.tree_checkbox["state"] = tk.DISABLED
-        
+
 
     def clear_all_canvas_btn(self):
         self.points = []
@@ -857,14 +742,12 @@ class SolarPlanelPlacerApp:
         self.keepout_button["state"] = tk.DISABLED
         self.cal_shadow_button["state"] = tk.DISABLED
         self.tree_checkbox["state"] = tk.DISABLED
-        
  
 
     def add_keepout_btn(self):
         self.prohibited_permanent_sets.append(self.prohibited_points.copy())
         self.keepout_button["state"] = tk.DISABLED
         self.update_canvas()
-
 
 
     def on_canvas_click(self, event):
@@ -936,10 +819,6 @@ class SolarPlanelPlacerApp:
             self.pv1.panel_points = box.tolist()
             self.points = []
 
-
-        
-
-        
         self.update_canvas()
         
 
@@ -961,7 +840,6 @@ class SolarPlanelPlacerApp:
             self.keepout_button["state"] = tk.NORMAL
         self.already_draw_panel = 0
         self.update_canvas()
-
 
 
     def on_canvas_motion(self, event):
@@ -986,16 +864,13 @@ class SolarPlanelPlacerApp:
                 x_,y_ = self.tree_points[0]
                 r = math.dist([x, y], [x_, y_])
                 self.draw_circle(x_,y_,r,self.canvas)
+                self.draw_circle(x_,y_,r+1,self.canvas,outline="white")
 
             return
-
-
         
         # self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="green2")
         self.draw_2half_circle(self.canvas,x, y,3,fill_left="green2",fill_right="deep pink")
         
-
-
         if 0 < len(self.points) and len(self.points) < 4:
             for i in range(len(self.points)-1):
                 self.canvas.create_line(self.points[i][0], self.points[i][1], self.points[i + 1][0], self.points[i + 1][1], fill="orange")
@@ -1003,11 +878,6 @@ class SolarPlanelPlacerApp:
             # Draw a line connecting the last point to the current mouse coordinates
             self.canvas.create_line(self.points[-1][0], self.points[-1][1], x, y, fill="orange")
             self.canvas.create_line(self.points[0][0], self.points[0][1], x, y, fill="orange")
-
-
-        
-        
-
 
 
     def on_mousewheel(self, event):
@@ -1143,7 +1013,6 @@ class SolarPlanelPlacerApp:
             # self.canvas.create_text(x +10 , y, text=f"{n}", fill="black", font=('Helvetica 10 bold'))
             
 
-
         if len(self.pv1.panel_points) > 0:
             for i in range(len(self.pv1.panel_points)-1):
                 x0,y0 = self.pv1.panel_points[i]
@@ -1151,8 +1020,132 @@ class SolarPlanelPlacerApp:
                 self.canvas.create_line(x0, y0,x1, y1, fill="orange")
             self.canvas.create_line(self.pv1.panel_points[0][0], self.pv1.panel_points[0][1], self.pv1.panel_points[-1][0], self.pv1.panel_points[-1][1], fill="orange")
 
+    def calculate_panel_shadow(self, date_input_str, selected_points, color="black", stipple="gray50"):
+        if self.already_draw_shadow == 0:
+            return
+        
+        if len(selected_points) < 4:
+            return
+        
+        self.update_lat_lng()
+        lavitage_height_str = self.lavitage_entry.get()
+        
+        local_datetime = datetime.datetime.strptime(date_input_str, "%Y/%m/%d %H:%M:%S")
+        if local_datetime.month <7:
+            color="gray2"
+        else:
+            color="gray4"
+        pytz.timezone(self.tz)
+
+        # Convert input to appropriate types
+        # -Convert local to UTC
+        date = local_datetime.astimezone(pytz.utc)
+        try:
+            lavitage_height = float(lavitage_height_str)
+        except ValueError:
+            lavitage_height = 0
+
+        # Calculate solar position using pysolar
+        solar_altitude = get_altitude(self.Latitude, self.Longitude, date)
+        solar_azimuth = get_azimuth(self.Latitude, self.Longitude, date)
+        # print(solar_azimuth)
+        # print(solar_altitude)
+
+        shadow_azimuth = solar_azimuth + 90
+
+        # Calculate shadow length
+        phi = math.radians(solar_altitude)
+        phi = phi % (2 * math.pi)
+        shadow_length = (lavitage_height / math.tan(phi)) / self.scale_factor
+        
+        # print(shadow_length)
+
+        # Calculate shadow direction using azimuth
+        shadow_direction_x = shadow_length * math.cos(math.radians(shadow_azimuth))
+        shadow_direction_y = shadow_length * math.sin(math.radians(shadow_azimuth))
 
         
+
+        
+        # Draw shadow lines from each corner of the rectangle
+        shadow_end_x1 = selected_points[-4][0] + shadow_direction_x
+        shadow_end_y1 = selected_points[-4][1] + shadow_direction_y
+
+        shadow_end_x2 = selected_points[-3][0] + shadow_direction_x
+        shadow_end_y2 = selected_points[-3][1] + shadow_direction_y
+
+        shadow_end_x3 = selected_points[-2][0] + shadow_direction_x
+        shadow_end_y3 = selected_points[-2][1] + shadow_direction_y
+
+        shadow_end_x4 = selected_points[-1][0] + shadow_direction_x
+        shadow_end_y4 = selected_points[-1][1] + shadow_direction_y
+        
+
+        # Draw shadow lines from each corner to corresponding points on the ground
+        # self.canvas.create_line(selected_points[-4][0], selected_points[-4][1], shadow_end_x1, shadow_end_y1, fill="black")
+        # self.canvas.create_line(selected_points[-3][0], selected_points[-3][1], shadow_end_x2, shadow_end_y2, fill="black")
+        # self.canvas.create_line(selected_points[-2][0], selected_points[-2][1], shadow_end_x3, shadow_end_y3, fill="black")
+        # self.canvas.create_line(selected_points[-1][0], selected_points[-1][1], shadow_end_x4, shadow_end_y4, fill="black")
+        
+        # Draw the rotated rectangle on the canvas
+        self.canvas.create_polygon(shadow_end_x1, shadow_end_y1, shadow_end_x2, shadow_end_y2, shadow_end_x3, shadow_end_y3, shadow_end_x4, shadow_end_y4, fill=color, stipple=stipple)
+
+    
+    def calculate_trees_shadow(self, date_input_str, color="black", stipple="gray50"):
+        if self.already_draw_shadow == 0:
+            return
+
+        self.update_lat_lng()
+        lavitage_height_str = self.lavitage_entry.get()
+        
+        local_datetime = datetime.datetime.strptime(date_input_str, "%Y/%m/%d %H:%M:%S")
+        if local_datetime.month <7:
+            color="gray2"
+        else:
+            color="gray4"
+        pytz.timezone(self.tz)
+
+        # Convert input to appropriate types
+        # -Convert local to UTC
+        date = local_datetime.astimezone(pytz.utc)
+        
+        try:
+            lavitage_height = float(lavitage_height_str)
+        except ValueError:
+            lavitage_height = 0
+
+        # Calculate solar position using pysolar
+        solar_altitude = get_altitude(self.Latitude, self.Longitude, date)
+        solar_azimuth = get_azimuth(self.Latitude, self.Longitude, date)
+        # print(solar_azimuth)
+        # print(solar_altitude)
+
+        shadow_azimuth = solar_azimuth + 90
+
+        # Calculate shadow length
+        phi = math.radians(solar_altitude)
+        phi = phi % (2 * math.pi)
+
+
+
+        for tree_permanent_points in self.tree_permanent_sets:
+            x0,y0 = tree_permanent_points[0]
+            x1,y1 = tree_permanent_points[1]
+            r = math.dist([x0, y0], [x1, y1])
+
+            dh = self.bound(tree_permanent_points[2] - lavitage_height, 0,100)
+
+            tree_shadow_length = (dh / math.tan(phi)) / self.scale_factor
+
+            # Calculate shadow direction using azimuth
+            tree_shadow_direction_x = tree_shadow_length * math.cos(math.radians(shadow_azimuth))
+            tree_shadow_direction_y = tree_shadow_length * math.sin(math.radians(shadow_azimuth))
+
+            shadow_x0 = x0 + tree_shadow_direction_x
+            shadow_y0 = y0 + tree_shadow_direction_y
+
+            self.draw_circle(shadow_x0,shadow_y0,r,self.canvas,fill="black")
+            
 
 
     def calculate_area(self):
