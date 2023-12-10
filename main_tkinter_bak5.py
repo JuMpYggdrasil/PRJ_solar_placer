@@ -48,9 +48,10 @@ class SolarArray:
         self.vertical_panel_count = 0
         self.intersect_keepout_count = 0
         self.kWp = 0
+        self.kWh = 0
         self.azimuth_angle = 0
 
-        # GUI panel setting
+        # GUIpanel setting
         self.panel_type = []
         self.tilt_angle = 0
         self.lavitation = 0
@@ -222,6 +223,9 @@ class SolarArray:
         
         panel_power,panel_width,panel_height = self.panel_type
         self.kWp = panel_power * self.total_panel_count / 1000
+
+        self.kWh = 0
+        
 
         return
     
