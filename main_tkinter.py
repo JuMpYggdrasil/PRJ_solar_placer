@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import calendar
 import json
 import os
+import copy
 
 jsondata = None
 
@@ -233,8 +234,8 @@ class SolarArray:
         return rotated_x, rotated_y
     
 
-    # def copy(self):
-    #     pass
+    def copy(self):
+        return copy.deepcopy(self)
     
     
 
@@ -609,6 +610,7 @@ class SolarPlanelPlacerApp:
         # print(f"Value changed to: {current_value}")
 
         self.update_canvas()
+        self.update_panel_setting(self.pv1)
 
     def entry_changed2(self, event):
         # This function will be called when the entry loses focus
@@ -621,6 +623,7 @@ class SolarPlanelPlacerApp:
         # Do something with the current value, e.g., print it
         # print(f"Value changed to: {current_value}")
         self.update_lat_lng()
+        self.update_panel_setting(self.pv1)
 
 
 
@@ -631,10 +634,10 @@ class SolarPlanelPlacerApp:
             user_lat, user_lng = map(lambda s: float(s.strip()), lat_str.split(','))
 
             if self.pvout_en_var.get() == 1:
-                self.lat_entry.delete(0,len(self.lat_entry.get()))
+                self.lat_entry.delete(0,tk.END)
                 self.lat_entry.insert(0,user_lat)
 
-                self.lon_entry.delete(0,len(self.lon_entry.get()))
+                self.lon_entry.delete(0,tk.END)
                 self.lon_entry.insert(0,user_lng)
         else:
             try:
@@ -654,7 +657,7 @@ class SolarPlanelPlacerApp:
             self.province_label.config(text=f"province: {self.province}")
 
             if self.pvout_en_var.get() == 1:
-                self.pvout_entry.delete(0,len(self.pvout_entry.get()))
+                self.pvout_entry.delete(0,tk.END)
                 self.pvout_entry.insert(0,self.pvout)
         
 
@@ -1021,6 +1024,8 @@ class SolarPlanelPlacerApp:
     def update_canvas(self):
         if self.original_image is None:
             return
+        
+        
     
         # Define the region of interest (ROI)
         roi_width = 200
@@ -1079,6 +1084,7 @@ class SolarPlanelPlacerApp:
         draw_cond = self.already_draw_panel == 1
         point_cond = len(self.pv1.panel_points) >= 4
         if draw_cond and point_cond:
+            
             test_pv = self.pv1
             test_pv.calculate_panel(self.canvas, self.prohibited_permanent_sets)
 
@@ -1194,10 +1200,13 @@ class SolarPlanelPlacerApp:
             setback_length = 0
         solar_array.setback_length = setback_length
 
+        solar_array.panel_rotation_tick = self.panel_rotate_var.get()
+        solar_array.walk_gap_rotation_tick = self.walk_gap_rotate_var.get()
+
         panel_power,panel_width,panel_height = panel_type
 
         # Fixed size for small rectangles
-        if self.panel_rotate_var.get()==1:
+        if solar_array.panel_rotation_tick==1:
             small_rect_width = panel_width/self.scale_factor # unit: meter/self.scale_factor
             small_rect_height = panel_height/self.scale_factor
         else:
@@ -1206,7 +1215,7 @@ class SolarPlanelPlacerApp:
         small_rect_size = (small_rect_width,small_rect_height)
         solar_array.small_rect_size = small_rect_size
 
-        if self.walk_gap_rotate_var.get() == 1:
+        if solar_array.walk_gap_rotation_tick == 1:
             big_gap_width = float(self.walk_gap_entry.get()) / self.scale_factor
             small_gap_width = float(self.gap_width_entry.get()) / self.scale_factor
             gap_width = big_gap_width*1/2+small_gap_width*1/2
@@ -1229,16 +1238,12 @@ class SolarPlanelPlacerApp:
         solar_array.tilt_angle = float(self.tilt_angle_entry.get())
         solar_array.lavitation = float(self.lavitage_entry.get())
 
-        solar_array.panel_rotation_tick = self.panel_rotate_var.get()
-        solar_array.walk_gap_rotation_tick = self.walk_gap_rotate_var.get()
+        
 
     def new_panel_btn(self):
         self.already_draw_panel = 0
         self.update_panel_setting(self.pv1)
-        existing_panel = self.pv1
-        self.panel_permanent_sets.append(existing_panel.copy())
-        for panel_permanent_array in self.panel_permanent_sets:
-            print(panel_permanent_array.panel_points)
+        self.panel_permanent_sets.append(self.pv1.copy())
         self.pv1.panel_points = []
         self.update_canvas()
         self.new_panel_button["state"] = tk.DISABLED
