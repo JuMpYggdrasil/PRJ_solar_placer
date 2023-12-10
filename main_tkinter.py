@@ -233,8 +233,8 @@ class SolarArray:
         return rotated_x, rotated_y
     
 
-    def copy(self):
-        pass
+    # def copy(self):
+    #     pass
     
     
 
@@ -1067,9 +1067,9 @@ class SolarPlanelPlacerApp:
             for shadow_datetime in self.shadow_datetimes:
                 self.calculate_panel_shadow(shadow_datetime,self.pv1.panel_points)
 
-        for panel_permanent_points in self.panel_permanent_sets:
+        for panel_permanent_array in self.panel_permanent_sets:
             for shadow_datetime in self.shadow_datetimes:
-                self.calculate_panel_shadow(shadow_datetime,panel_permanent_points)
+                self.calculate_panel_shadow(shadow_datetime,panel_permanent_array.panel_points)
 
         angle = 0
         panels_tempo_count = 0
@@ -1079,14 +1079,13 @@ class SolarPlanelPlacerApp:
         draw_cond = self.already_draw_panel == 1
         point_cond = len(self.pv1.panel_points) >= 4
         if draw_cond and point_cond:
-            self.pv1.calculate_panel(self.canvas, self.prohibited_permanent_sets)
+            test_pv = self.pv1
+            test_pv.calculate_panel(self.canvas, self.prohibited_permanent_sets)
 
             angle = min(self.pv1.azimuth_angle, 90 - self.pv1.azimuth_angle)
 
-        # for panel_permanent_set in self.panel_permanent_sets:
-        #     panels_count = self.calculate_panel(self.canvas, panel_permanent_set, self.prohibited_permanent_sets)
-        #     if panels_count:
-        #         panels_permanent_count += panels_count
+        for panel_permanent_array in self.panel_permanent_sets:
+            panel_permanent_array.calculate_panel(self.canvas, self.prohibited_permanent_sets)
 
         total_panel_count = self.pv1.total_panel_count + panels_permanent_count
         selected_panel_type = self.panel_type_var.get()
@@ -1236,7 +1235,10 @@ class SolarPlanelPlacerApp:
     def new_panel_btn(self):
         self.already_draw_panel = 0
         self.update_panel_setting(self.pv1)
-        # self.panel_permanent_sets.append(self.pv1.copy())
+        existing_panel = self.pv1
+        self.panel_permanent_sets.append(existing_panel.copy())
+        for panel_permanent_array in self.panel_permanent_sets:
+            print(panel_permanent_array.panel_points)
         self.pv1.panel_points = []
         self.update_canvas()
         self.new_panel_button["state"] = tk.DISABLED

@@ -1,37 +1,62 @@
-from pvlib import solarposition
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
+import tkinter as tk
 
-tz = 'Asia/Bangkok'
-lat, lon = 28.6, 77.2
-times = pd.date_range('2019-01-01 00:00:00', '2020-01-01',freq='H', tz=tz)
+class Human:
+    def __init__(self):
+        self.name = ""
+        self.age = 0
+        self.height = 0.0
 
-solpos = solarposition.get_solarposition(times, lat, lon)
-# remove nighttime
-solpos = solpos.loc[solpos['apparent_elevation'] > 0, :]
+    def input_information(self, name, age, height):
+        self.name = name
+        self.age = age
+        self.height = height
 
-fig, ax = plt.subplots()
-points = ax.scatter(solpos.azimuth, solpos.apparent_elevation, s=2,
-                    c=solpos.index.dayofyear, label=None)
-fig.colorbar(points)
+    def display_information(self):
+        return f"Name: {self.name}, Age: {self.age} years, Height: {self.height} meters"
 
-for hour in np.unique(solpos.index.hour):
-    # choose label position by the largest elevation for each hour
-    subset = solpos.loc[solpos.index.hour == hour, :]
-    height = subset.apparent_elevation
-    pos = solpos.loc[height.idxmax(), :]
-    ax.text(pos['azimuth'], pos['apparent_elevation'], str(hour))
 
-for date in pd.to_datetime(['2019-03-21', '2019-06-21', '2019-12-21']):
-    times = pd.date_range(date, date+pd.Timedelta('24h'), freq='5min', tz=tz)
-    solpos = solarposition.get_solarposition(times, lat, lon)
-    solpos = solpos.loc[solpos['apparent_elevation'] > 0, :]
-    label = date.strftime('%Y-%m-%d')
-    ax.plot(solpos.azimuth, solpos.apparent_elevation, label=label)
+class NameListApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Name List App")
 
-ax.figure.legend(loc='upper left')
-ax.set_xlabel('Solar Azimuth (degrees)')
-ax.set_ylabel('Solar Elevation (degrees)')
+        self.name_entry = tk.Entry(root)
+        self.name_entry.pack(pady=5)
 
-plt.show()
+        self.age_entry = tk.Entry(root)
+        self.age_entry.pack(pady=5)
+
+        self.height_entry = tk.Entry(root)
+        self.height_entry.pack(pady=5)
+
+        self.add_button = tk.Button(root, text="Add Information", command=self.add_information)
+        self.add_button.pack(pady=10)
+
+        self.names_listbox = tk.Listbox(root)
+        self.names_listbox.pack(pady=10)
+
+        self.human_list = []
+
+    def add_information(self):
+        name = self.name_entry.get()
+        age = int(self.age_entry.get())
+        height = float(self.height_entry.get())
+
+        if name and age and height:
+            person = Human()
+            person.input_information(name, age, height)
+            self.human_list.append(person)
+
+            # Display information in the listbox
+            self.names_listbox.insert(tk.END, person.display_information())
+
+            # Clear entry fields
+            self.name_entry.delete(0, tk.END)
+            self.age_entry.delete(0, tk.END)
+            self.height_entry.delete(0, tk.END)
+
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = NameListApp(root)
+    root.mainloop()
