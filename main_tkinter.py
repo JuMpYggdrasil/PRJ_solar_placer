@@ -313,12 +313,9 @@ class SolarPlanelPlacerApp:
         
         # Create and add the first tab (Tab 1)
         tab1 = ttk.Frame(self.notebook)
-        self.notebook.add(tab1, text='panel layout')
+        self.notebook.add(tab1, text='Panel Layout')
         
         
-        
-        
-
         frame4 = tk.Frame(tab1)
         frame4.pack(side=tk.TOP)
 
@@ -529,7 +526,7 @@ class SolarPlanelPlacerApp:
 
         # Create and add the second tab (Tab 3)
         tab4 = ttk.Frame(self.notebook)
-        self.notebook.add(tab4, text='arrays')
+        self.notebook.add(tab4, text='Array List')
 
         # Create a frame
         frame40 = tk.Frame(tab4)
@@ -556,8 +553,28 @@ class SolarPlanelPlacerApp:
             self.already_draw_panel = 1
             self.calculate_panel_button["state"] = tk.NORMAL
             self.new_panel_button["state"] = tk.NORMAL
+            self.restore_panel_setting(self.pv_active)
             self.update_panel_setting(self.pv_active)
             self.update_canvas()
+
+    # partial
+    def restore_panel_setting(self, solar_array):
+        if not solar_array.panel_points:
+            return
+        
+        self.setback_entry.delete(0,tk.END)
+        self.setback_entry.insert(0,solar_array.setback_length)
+
+        
+        self.panel_rotate_var.set(solar_array.panel_rotation_tick)
+        self.walk_gap_rotate_var.set(solar_array.walk_gap_rotation_tick)
+
+        self.tilt_angle_entry.delete(0,tk.END)
+        self.tilt_angle_entry.insert(0,solar_array.tilt_angle)
+
+        self.lavitage_entry.delete(0,tk.END)
+        self.lavitage_entry.insert(0,solar_array.lavitation)
+
 
     def on_tab_selected(self, event):
         # Get the selected tab index
@@ -1243,8 +1260,12 @@ class SolarPlanelPlacerApp:
         
         self.update_lat_lng()
         local_datetime = datetime.datetime.strptime(date_input_str, "%Y/%m/%d %H:%M:%S")
+        if local_datetime.month <7:
+            color="gray2"
+        else:
+            color="gray4"
         pytz.timezone(self.tz)
-
+        
         # Convert input to appropriate types
         # -Convert local to UTC
         date = local_datetime.astimezone(pytz.utc)
@@ -1300,10 +1321,7 @@ class SolarPlanelPlacerApp:
         lavitage_height_str = self.lavitage_entry.get()
         
         local_datetime = datetime.datetime.strptime(date_input_str, "%Y/%m/%d %H:%M:%S")
-        if local_datetime.month <7:
-            color="gray2"
-        else:
-            color="gray4"
+
         pytz.timezone(self.tz)
 
         # Convert input to appropriate types
