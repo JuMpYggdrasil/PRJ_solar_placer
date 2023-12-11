@@ -62,6 +62,10 @@ class SolarArray:
         self.gap_size = None
         self.small_rect_size = None
 
+        # Save the initial state for later reset
+        self._initial_state = (panel_points, 0, 0, 0, 0, 0, 0, [], 0, 0, 0, 0, 0, None, None)
+
+    
     def calculate_panel(self, canvas, keepout_set):
         if not self.panel_type:
             return
@@ -237,10 +241,13 @@ class SolarArray:
     def copy(self):
         return copy.deepcopy(self)
     
-    
-
-
-
+    def reset_to_initial_state(self):
+        (self.panel_points, self.total_panel_count, self.horizontal_panel_count,
+         self.vertical_panel_count, self.intersect_keepout_count, self.kWp,
+         self.azimuth_angle, self.panel_type, self.tilt_angle, self.lavitation,
+         self.panel_rotation_tick, self.walk_gap_rotation_tick, self.setback_length,
+         self.gap_size, self.small_rect_size) = self._initial_state
+      
 class SolarPlanelPlacerApp:
     def __init__(self, master):
         self.shadow_datetimes = ["2023/03/23 09:00:00","2023/03/23 13:00:00","2023/03/23 16:00:00",
@@ -387,6 +394,8 @@ class SolarPlanelPlacerApp:
 
         # Bind mouse click and scroll events
         self.canvas.bind("<Button-1>", self.on_canvas_click)
+        self.canvas.bind("<Enter>", self.on_canvas_enter)
+        self.canvas.bind("<Leave>", self.on_canvas_leave)
         self.canvas.bind("<MouseWheel>", self.on_mousewheel)
 
         # Bind right-click event for creating prohibited areas
@@ -408,14 +417,14 @@ class SolarPlanelPlacerApp:
         self.panel_type_combobox.pack(side=tk.LEFT)
 
         # Create a button to calculate rectangle properties based on the selected panel type
-        self.calculate_button = tk.Button(frame2, text="PV Panel", command=self.calculate_panel_btn, state=tk.DISABLED)
-        self.calculate_button.pack(side=tk.LEFT)
+        self.calculate_panel_button = tk.Button(frame2, text="PV Panel", command=self.calculate_panel_btn, state=tk.DISABLED)
+        self.calculate_panel_button.pack(side=tk.LEFT)
 
         self.new_panel_button = tk.Button(frame2, text="New Panel", command=self.new_panel_btn, state=tk.DISABLED)
         self.new_panel_button.pack(side=tk.LEFT)
 
-        self.clear_button = tk.Button(frame2, text="Clear Panel", command=self.clear_canvas_btn)
-        self.clear_button.pack(side=tk.LEFT)
+        self.clear_panel_button = tk.Button(frame2, text="Clear Panel", command=self.clear_canvas_btn, state=tk.DISABLED)
+        self.clear_panel_button.pack(side=tk.LEFT)
 
         self.keepout_button = tk.Button(frame2, text="Keepout", command=self.add_keepout_btn, state=tk.DISABLED)
         self.keepout_button.pack(side=tk.LEFT)
@@ -470,6 +479,7 @@ class SolarPlanelPlacerApp:
         self.lat_entry.bind("<Return>", self.entry_changed2)
 
         self.lon_entry.bind("<FocusOut>", self.entry_changed2)
+        self.lon_entry.bind("<Return>", self.entry_changed2)
         self.lavitage_entry.bind("<FocusOut>", self.entry_changed2)
         self.tilt_angle_entry.bind("<FocusOut>", self.entry_changed2)
 
@@ -485,9 +495,9 @@ class SolarPlanelPlacerApp:
 
         self.cal_shadow_button = tk.Button(frame6, text="Calculate Shadow", command=self.calculate_shadows_btn, state=tk.DISABLED)
         self.cal_shadow_button.pack(side=tk.LEFT)
-        self.hide_shadow_button = tk.Button(frame6, text="Hide Shadow", command=self.hide_shadows_btn)
+        self.hide_shadow_button = tk.Button(frame6, text="Hide Shadow", command=self.hide_shadows_btn, state=tk.DISABLED)
         self.hide_shadow_button.pack(side=tk.LEFT)
-        self.clear_trees_button = tk.Button(frame6, text="Clear Trees", command=self.clear_trees_btn)
+        self.clear_trees_button = tk.Button(frame6, text="Clear Trees", command=self.clear_trees_btn, state=tk.DISABLED)
         self.clear_trees_button.pack(side=tk.LEFT)
 
         frame7 = tk.Frame(tab2)
@@ -537,7 +547,7 @@ class SolarPlanelPlacerApp:
 
         # Print or do something based on the selected tab index
         # print(f"Tab {selected_tab_index + 1} selected")
-
+        self.update_panel_setting(self.pv1)
         self.update_canvas()
         self.update_lat_lng()
 
@@ -644,6 +654,7 @@ class SolarPlanelPlacerApp:
         # print(f"Value changed to: {current_value}")
         self.update_lat_lng()
         self.update_panel_setting(self.pv1)
+        self.update_canvas()
 
 
 
@@ -677,15 +688,27 @@ class SolarPlanelPlacerApp:
 
                 self.lon_entry.delete(0,tk.END)
                 self.lon_entry.insert(0,user_lng)
-        else:
-            try:
-                user_lat = float(self.lat_entry.get())
-            except ValueError:
-                user_lat = 0
-            try:
-                user_lng = float(self.lon_entry.get())
-            except ValueError:
-                user_lng = 0
+
+        lng_str = self.lon_entry.get()
+        if "," in lng_str:
+            # Split the string by comma and strip spaces, then convert to float
+            user_lat, user_lng = map(lambda s: float(s.strip()), lng_str.split(','))
+
+            if self.pvout_en_var.get() == 1:
+                self.lat_entry.delete(0,tk.END)
+                self.lat_entry.insert(0,user_lat)
+
+                self.lon_entry.delete(0,tk.END)
+                self.lon_entry.insert(0,user_lng)
+        
+        try:
+            user_lat = float(self.lat_entry.get())
+        except ValueError:
+            user_lat = 0
+        try:
+            user_lng = float(self.lon_entry.get())
+        except ValueError:
+            user_lng = 0
         
         self.Latitude = user_lat
         self.Longitude = user_lng
@@ -699,35 +722,101 @@ class SolarPlanelPlacerApp:
                 self.pvout_entry.insert(0,self.pvout)
         
 
-    def calculate_shadows_btn(self, color="black", stipple="gray50"):
-        self.already_draw_shadow = 1
+
+
+    def calculate_panel_btn(self):
+        self.already_draw_panel = 1
+        self.cal_shadow_button["state"] = tk.NORMAL
+        self.tree_checkbox["state"] = tk.NORMAL
+        self.new_panel_button["state"] = tk.NORMAL
+        self.update_panel_setting(self.pv1)
         self.update_canvas()
 
+    def update_panel_setting(self, solar_array):
+        if not solar_array.panel_points:
+            return
+
+        selected_panel_type = self.panel_type_var.get()
+        panel_type = panel_info.get(selected_panel_type)
+        solar_array.panel_type = panel_type
+
+        try:
+            setback_length = float(self.setback_entry.get()) / self.scale_factor
+        except ValueError:
+            setback_length = 0
+        solar_array.setback_length = setback_length
+
+        solar_array.panel_rotation_tick = self.panel_rotate_var.get()
+        solar_array.walk_gap_rotation_tick = self.walk_gap_rotate_var.get()
+
+        panel_power,panel_width,panel_height = panel_type
+
+        # Fixed size for small rectangles
+        if solar_array.panel_rotation_tick==1:
+            small_rect_width = panel_width/self.scale_factor # unit: meter/self.scale_factor
+            small_rect_height = panel_height/self.scale_factor
+        else:
+            small_rect_width = panel_height/self.scale_factor # unit: meter/self.scale_factor
+            small_rect_height = panel_width/self.scale_factor
+        small_rect_size = (small_rect_width,small_rect_height)
+        solar_array.small_rect_size = small_rect_size
+
+        if solar_array.walk_gap_rotation_tick == 1:
+            big_gap_width = float(self.walk_gap_entry.get()) / self.scale_factor
+            small_gap_width = float(self.gap_width_entry.get()) / self.scale_factor
+            gap_width = big_gap_width*1/2+small_gap_width*1/2
+
+            small_gap_height = float(self.gap_height_entry.get()) / self.scale_factor
+            big_gap_height = small_gap_height
+            gap_height = small_gap_height
+
+        else:
+            small_gap_width = float(self.gap_width_entry.get()) / self.scale_factor
+            big_gap_width = small_gap_width
+            gap_width = small_gap_width
+
+            big_gap_height = float(self.walk_gap_entry.get()) / self.scale_factor
+            small_gap_height = float(self.gap_height_entry.get()) / self.scale_factor
+            gap_height = big_gap_height*1/2+small_gap_height*1/2
+        gap_size = (big_gap_width,big_gap_height,small_gap_width,small_gap_height,gap_width,gap_height)
+        solar_array.gap_size = gap_size
+
+        solar_array.tilt_angle = float(self.tilt_angle_entry.get())
+        solar_array.lavitation = float(self.lavitage_entry.get())
+
+        
+
+    def new_panel_btn(self):
+        self.already_draw_panel = 0
+        self.update_panel_setting(self.pv1)
+        self.panel_permanent_sets.append(self.pv1.copy())
+        self.pv1.reset_to_initial_state()
+        self.update_canvas()
+        self.new_panel_button["state"] = tk.DISABLED
+        self.calculate_panel_button["state"] = tk.DISABLED
+        self.clear_panel_button["state"] = tk.DISABLED
+        
     
-    def hide_shadows_btn(self):
-        self.already_draw_shadow = 0
-        self.update_canvas()
-
-
-    def clear_trees_btn(self):
-        self.tree_points = []
-        self.tree_permanent_sets = []
-        self.update_canvas()
-
 
     def clear_canvas_btn(self):
         self.points = []
-        self.pv1.panel_points = []
+        self.pv1.reset_to_initial_state()
         self.already_draw_panel = 0
         self.already_draw_shadow = 0
         self.update_canvas()
+        
+        self.calculate_panel_button["state"] = tk.DISABLED
+        self.new_panel_button["state"] = tk.DISABLED
+        self.clear_panel_button["state"] = tk.DISABLED
+
         self.cal_shadow_button["state"] = tk.DISABLED
+        self.tree_var.set(0)
         self.tree_checkbox["state"] = tk.DISABLED
 
 
     def clear_all_canvas_btn(self):
         self.points = []
-        self.pv1.panel_points = []
+        self.pv1.reset_to_initial_state()
         self.panel_permanent_sets = []
         self.prohibited_points = []
         self.prohibited_permanent_sets = []
@@ -737,23 +826,87 @@ class SolarPlanelPlacerApp:
         self.already_draw_panel = 0
         self.already_draw_shadow = 0
         self.update_canvas()
-        self.calculate_button["state"] = tk.DISABLED
+        self.calculate_panel_button["state"] = tk.DISABLED
         self.new_panel_button["state"] = tk.DISABLED
+        self.clear_panel_button["state"] = tk.DISABLED
         self.keepout_button["state"] = tk.DISABLED
         self.cal_shadow_button["state"] = tk.DISABLED
+        self.tree_var.set(0)
         self.tree_checkbox["state"] = tk.DISABLED
  
 
     def add_keepout_btn(self):
         self.prohibited_permanent_sets.append(self.prohibited_points.copy())
         self.keepout_button["state"] = tk.DISABLED
+        self.update_panel_setting(self.pv1)
         self.update_canvas()
 
 
+    def calculate_shadows_btn(self, color="black", stipple="gray50"):
+        self.already_draw_shadow = 1
+        self.cal_shadow_button["state"] = tk.DISABLED
+        self.hide_shadow_button["state"] = tk.NORMAL
+        self.update_panel_setting(self.pv1)
+        self.update_canvas()
+
+    
+    def hide_shadows_btn(self):
+        self.already_draw_shadow = 0
+        self.hide_shadow_button["state"] = tk.DISABLED
+        self.cal_shadow_button["state"] = tk.NORMAL
+        self.update_panel_setting(self.pv1)
+        self.update_canvas()
+
+
+    def clear_trees_btn(self):
+        self.tree_points = []
+        self.tree_permanent_sets = []
+        self.clear_trees_button["state"] = tk.DISABLED
+        self.update_panel_setting(self.pv1)
+        self.update_canvas()
+
+    def on_canvas_enter(self,event):
+        self.update_panel_setting(self.pv1)
+        self.update_canvas()
+
+    def on_canvas_leave(self,event):
+        self.update_panel_setting(self.pv1)
+        self.update_canvas()
+
     def on_canvas_click(self, event):
+        def point_in_polygon(x, y, polygon):
+            n = len(polygon)
+            inside = False
+
+            p1x, p1y = polygon[0]
+            for i in range(n + 1):
+                p2x, p2y = polygon[i % n]
+                if y > min(p1y, p2y):
+                    if y <= max(p1y, p2y):
+                        if x <= max(p1x, p2x):
+                            if p1y != p2y:
+                                xints = (y - p1y) * (p2x - p1x) / (p2y - p1y) + p1x
+                                if p1x == p2x or x <= xints:
+                                    inside = not inside
+                p1x, p1y = p2x, p2y
+
+            return inside
+        
         x, y = event.x, event.y
 
-        self.points.append((x, y))
+        click_on_panel_conds = []
+        if self.pv1.panel_points:
+            check_cond = point_in_polygon(x,y,self.pv1.panel_points)
+            click_on_panel_conds.append(check_cond)
+        
+        for panel_permanent_array in self.panel_permanent_sets:
+            check_cond = point_in_polygon(x,y,panel_permanent_array.panel_points)
+            click_on_panel_conds.append(check_cond)
+
+        if any(click_on_panel_conds):
+            print("click on panel")
+        else:
+            self.points.append((x, y))
 
         if not self.reference_points:
             # If the first two points are clicked, prompt the user to enter the scale factor
@@ -789,11 +942,14 @@ class SolarPlanelPlacerApp:
                     x,y,h = self.tree_points[0],self.tree_points[1],h_val
                     self.tree_permanent_sets.append((x,y,h))
                     self.tree_points = []
+                    self.clear_trees_button["state"] = tk.NORMAL
                 else:
                     self.tree_points = []
 
         if len(self.points) > 4:
             self.points.pop(0)
+
+        
 
         if len(self.points) > 2:
             area = self.calculate_area()
@@ -801,7 +957,9 @@ class SolarPlanelPlacerApp:
         else:
             area = 0
             self.area_label.config(text=f"Area: {area:.2f} square meters")
+            
         if len(self.points) > 1:
+            self.clear_panel_button["state"] = tk.NORMAL
             distance = self.calculate_distance()
             self.distance_label.config(text=f"Distance: {distance:.2f} meters")
         else:
@@ -809,7 +967,8 @@ class SolarPlanelPlacerApp:
             self.distance_label.config(text=f"Distance: {distance:.2f} meters")
 
         if len(self.points) == 4:
-            self.calculate_button["state"] = tk.NORMAL
+            self.calculate_panel_button["state"] = tk.NORMAL
+            self.clear_panel_button["state"] = tk.NORMAL
             
             points = np.array(self.points[-4:], dtype=np.int32)
             # Find the minimum area rectangle using OpenCV
@@ -819,7 +978,10 @@ class SolarPlanelPlacerApp:
             self.pv1.panel_points = box.tolist()
             self.points = []
 
+        self.update_panel_setting(self.pv1)
         self.update_canvas()
+
+    
         
 
     def on_canvas_right_click(self, event):
@@ -839,6 +1001,7 @@ class SolarPlanelPlacerApp:
         if len(self.prohibited_points)== 4:
             self.keepout_button["state"] = tk.NORMAL
         self.already_draw_panel = 0
+        self.update_panel_setting(self.pv1)
         self.update_canvas()
 
 
@@ -847,6 +1010,7 @@ class SolarPlanelPlacerApp:
         x, y = event.x, event.y
 
         self.update_canvas()
+        # do not update_panel_setting() coz lag GUI
     
         if not self.reference_points:
             self.canvas.create_oval(x - 4, y - 4, x + 4, y + 4, fill="", outline="purple", width=2)
@@ -894,7 +1058,6 @@ class SolarPlanelPlacerApp:
     def update_canvas(self):
         if self.original_image is None:
             return
-        
         
     
         # Define the region of interest (ROI)
@@ -946,39 +1109,34 @@ class SolarPlanelPlacerApp:
             for shadow_datetime in self.shadow_datetimes:
                 self.calculate_panel_shadow(shadow_datetime,panel_permanent_array.panel_points)
 
-        angle = 0
-        panels_tempo_count = 0
-        panels_permanent_count = 0
+        
         
         # draw panel
         draw_cond = self.already_draw_panel == 1
         point_cond = len(self.pv1.panel_points) >= 4
         if draw_cond and point_cond:
-            
-            test_pv = self.pv1
-            test_pv.calculate_panel(self.canvas, self.prohibited_permanent_sets)
+            self.pv1.calculate_panel(self.canvas, self.prohibited_permanent_sets)
 
-            angle = min(self.pv1.azimuth_angle, 90 - self.pv1.azimuth_angle)
-
+        total_panel_kWp = 0
+        total_panel_detail_str = ""
         for panel_permanent_array in self.panel_permanent_sets:
             panel_permanent_array.calculate_panel(self.canvas, self.prohibited_permanent_sets)
-
-        total_panel_count = self.pv1.total_panel_count + panels_permanent_count
-        selected_panel_type = self.panel_type_var.get()
-        panel_power, _, _ = panel_info.get(selected_panel_type)
-
-        kWp_total = panel_power * total_panel_count /1000
-        kWp_tempo_total = panel_power * panels_tempo_count /1000
-        kWp_permanent_total = panel_power * panels_permanent_count /1000
+            total_panel_detail_str += f"{panel_permanent_array.kWp:,.1f} + "
+            total_panel_kWp += panel_permanent_array.kWp
+        
+        
+        total_panel_detail_str += f"{self.pv1.kWp} "
+        total_panel_kWp += self.pv1.kWp
         tilt_ratio = self.tilt_calcutation(self.pv1.tilt_angle)
+        angle = min(self.pv1.azimuth_angle, 90 - self.pv1.azimuth_angle)
         PVSYST_ratio = 0.87
         try:
             kWp_to_kWh = float(self.pvout_entry.get()) # per year
         except:
             kWp_to_kWh = 0
-        self.kWh_total = kWp_total * kWp_to_kWh * PVSYST_ratio * tilt_ratio
+        self.kWh_total = total_panel_kWp * kWp_to_kWh * PVSYST_ratio * tilt_ratio
         try:
-            self.total_rectangles_label.config(text=f"amount of panels {panels_permanent_count} + {panels_tempo_count} = {total_panel_count:,} , Azimuth angle(deg): {angle:,.2f} , kWp: {kWp_permanent_total} + {kWp_tempo_total} = {kWp_total:,.2f} kW, Anual Energy {self.kWh_total:,.2f} kWh")
+            self.total_rectangles_label.config(text=f"Azimuth angle(deg): {angle:,.2f} , kWp {total_panel_detail_str} = {total_panel_kWp:,.2f} kW, Anual Energy {self.kWh_total:,.2f} kWh")
         except:
             pass
         
@@ -1019,6 +1177,9 @@ class SolarPlanelPlacerApp:
                 x1,y1 = self.pv1.panel_points[i+1]
                 self.canvas.create_line(x0, y0,x1, y1, fill="orange")
             self.canvas.create_line(self.pv1.panel_points[0][0], self.pv1.panel_points[0][1], self.pv1.panel_points[-1][0], self.pv1.panel_points[-1][1], fill="orange")
+
+
+
 
     def calculate_panel_shadow(self, date_input_str, selected_points, color="black", stipple="gray50"):
         if self.already_draw_shadow == 0:
@@ -1174,73 +1335,6 @@ class SolarPlanelPlacerApp:
         return distance_in_meters
 
 
-    def calculate_panel_btn(self):
-        self.already_draw_panel = 1
-        self.cal_shadow_button["state"] = tk.NORMAL
-        self.tree_checkbox["state"] = tk.NORMAL
-        self.new_panel_button["state"] = tk.NORMAL
-        self.update_panel_setting(self.pv1)
-        self.update_canvas()
-
-    def update_panel_setting(self, solar_array):
-        selected_panel_type = self.panel_type_var.get()
-        panel_type = panel_info.get(selected_panel_type)
-        solar_array.panel_type = panel_type
-
-        try:
-            setback_length = float(self.setback_entry.get()) / self.scale_factor
-        except ValueError:
-            setback_length = 0
-        solar_array.setback_length = setback_length
-
-        solar_array.panel_rotation_tick = self.panel_rotate_var.get()
-        solar_array.walk_gap_rotation_tick = self.walk_gap_rotate_var.get()
-
-        panel_power,panel_width,panel_height = panel_type
-
-        # Fixed size for small rectangles
-        if solar_array.panel_rotation_tick==1:
-            small_rect_width = panel_width/self.scale_factor # unit: meter/self.scale_factor
-            small_rect_height = panel_height/self.scale_factor
-        else:
-            small_rect_width = panel_height/self.scale_factor # unit: meter/self.scale_factor
-            small_rect_height = panel_width/self.scale_factor
-        small_rect_size = (small_rect_width,small_rect_height)
-        solar_array.small_rect_size = small_rect_size
-
-        if solar_array.walk_gap_rotation_tick == 1:
-            big_gap_width = float(self.walk_gap_entry.get()) / self.scale_factor
-            small_gap_width = float(self.gap_width_entry.get()) / self.scale_factor
-            gap_width = big_gap_width*1/2+small_gap_width*1/2
-
-            small_gap_height = float(self.gap_height_entry.get()) / self.scale_factor
-            big_gap_height = small_gap_height
-            gap_height = small_gap_height
-
-        else:
-            small_gap_width = float(self.gap_width_entry.get()) / self.scale_factor
-            big_gap_width = small_gap_width
-            gap_width = small_gap_width
-
-            big_gap_height = float(self.walk_gap_entry.get()) / self.scale_factor
-            small_gap_height = float(self.gap_height_entry.get()) / self.scale_factor
-            gap_height = big_gap_height*1/2+small_gap_height*1/2
-        gap_size = (big_gap_width,big_gap_height,small_gap_width,small_gap_height,gap_width,gap_height)
-        solar_array.gap_size = gap_size
-
-        solar_array.tilt_angle = float(self.tilt_angle_entry.get())
-        solar_array.lavitation = float(self.lavitage_entry.get())
-
-        
-
-    def new_panel_btn(self):
-        self.already_draw_panel = 0
-        self.update_panel_setting(self.pv1)
-        self.panel_permanent_sets.append(self.pv1.copy())
-        self.pv1.panel_points = []
-        self.update_canvas()
-        self.new_panel_button["state"] = tk.DISABLED
-        
     
     
     def tilt_calcutation(self,angle):
