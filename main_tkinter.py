@@ -374,14 +374,14 @@ class SolarPlanelPlacerApp:
 
 
         # Create a frame for the first line (area_label and distance_label)
-        frame1 = tk.Frame(tab1)
-        frame1.pack(side=tk.TOP)
+        frame10 = tk.Frame(tab1)
+        frame10.pack(side=tk.TOP)
 
         # Create a label to display the measured area
-        self.area_label = tk.Label(frame1, text="Area: ")
+        self.area_label = tk.Label(frame10, text="Area: ")
         self.area_label.pack(side=tk.LEFT)
 
-        self.distance_label = tk.Label(frame1, text="Distance: ")
+        self.distance_label = tk.Label(frame10, text="Distance: ")
         self.distance_label.pack(side=tk.LEFT)
 
         # Zoom factor
@@ -403,72 +403,70 @@ class SolarPlanelPlacerApp:
         self.canvas.bind("<Motion>", self.on_canvas_motion)
 
         # Create a frame for the second line (buttons)
-        frame2 = tk.Frame(tab1)
-        frame2.pack(side=tk.TOP)
+        frame11 = tk.Frame(tab1)
+        frame11.pack(side=tk.TOP)
 
         
 
         # Create a Combobox for panel types
         panel_types = list(panel_info.keys())
         self.panel_type_var = tk.StringVar(value=panel_types[0])  # Set the default panel type
-        self.panel_type_combobox = ttk.Combobox(frame2, textvariable=self.panel_type_var, values=panel_types)
+        self.panel_type_combobox = ttk.Combobox(frame11, textvariable=self.panel_type_var, values=panel_types)
         self.panel_type_combobox.pack(side=tk.LEFT)
 
         # Create a button to calculate rectangle properties based on the selected panel type
-        self.calculate_panel_button = tk.Button(frame2, text="PV Panel", command=self.calculate_panel_btn, state=tk.DISABLED)
+        # self.calculate_panel_button = tk.Button(frame11, text="PV Panel", command=threading.Thread(target=self.calculate_panel_btn).start(), state=tk.DISABLED)
+        self.calculate_panel_button = tk.Button(frame11, text="PV Panel", command=self.calculate_panel_btn, state=tk.DISABLED)
         self.calculate_panel_button.pack(side=tk.LEFT)
 
-        self.new_panel_button = tk.Button(frame2, text="New Panel", command=self.new_panel_btn, state=tk.DISABLED)
+        self.new_panel_button = tk.Button(frame11, text="Save Panel", command=self.new_panel_btn, state=tk.DISABLED)
         self.new_panel_button.pack(side=tk.LEFT)
 
-        self.clear_panel_button = tk.Button(frame2, text="Clear Panel", command=self.clear_canvas_btn, state=tk.DISABLED)
+        self.clear_panel_button = tk.Button(frame11, text="Clear Panel", command=self.clear_canvas_btn, state=tk.DISABLED)
         self.clear_panel_button.pack(side=tk.LEFT)
 
-        self.keepout_button = tk.Button(frame2, text="Keepout", command=self.add_keepout_btn, state=tk.DISABLED)
+        self.keepout_button = tk.Button(frame11, text="Keepout", command=self.add_keepout_btn, state=tk.DISABLED)
         self.keepout_button.pack(side=tk.LEFT)
 
-        self.clear_all_button = tk.Button(frame2, text="Clear All", command=self.clear_all_canvas_btn)
+        self.clear_all_button = tk.Button(frame11, text="Clear All", command=self.clear_all_canvas_btn)
         self.clear_all_button.pack(side=tk.LEFT)
 
 
         # Create a frame for the third line (total_rectangles_label)
-        frame3 = tk.Frame(tab1)
-        frame3.pack(side=tk.TOP)
+        frame12 = tk.Frame(tab1)
+        frame12.pack(side=tk.TOP)
 
         # Create a label to display the total number of rectangles
-        self.total_rectangles_label = tk.Label(frame3, text="Total Rectangles: 0")
+        self.total_rectangles_label = tk.Label(frame12, text="Total Rectangles: 0")
         self.total_rectangles_label.pack(side=tk.LEFT)
-        
-        
-        
         
         # Create and add the second tab (Tab 2)
         tab2 = ttk.Frame(self.notebook)
         self.notebook.add(tab2, text='Shadow')
         
         # Create a frame
-        frame5 = tk.Frame(tab2)
-        frame5.pack(side=tk.TOP)
+        frame20 = tk.Frame(tab2)
+        frame20.pack(side=tk.TOP)
 
-        tk.Label(frame5, text="Latitude:").pack(side=tk.LEFT)
-        self.lat_entry = tk.Entry(frame5, width=25)
+        tk.Label(frame20, text="Latitude:").pack(side=tk.LEFT)
+        self.lat_entry = tk.Entry(frame20, width=25)
         # self.lat_entry.insert(0, "13.765733827940576")  # Default value
         self.lat_entry.insert(0, self.Latitude)  # Default value
         self.lat_entry.pack(side=tk.LEFT)
 
-        tk.Label(frame5, text="Longitude:").pack(side=tk.LEFT)
-        self.lon_entry = tk.Entry(frame5, width=25)
+        tk.Label(frame20, text="Longitude:").pack(side=tk.LEFT)
+        self.lon_entry = tk.Entry(frame20, width=25)
         # self.lon_entry.insert(0, "100.50257304756634")  # Default value
         self.lon_entry.insert(0, self.Longitude)  # Default value
         self.lon_entry.pack(side=tk.LEFT)
         
-        tk.Label(frame5, text="lavitage from ground (m):").pack(side=tk.LEFT)
-        self.lavitage_entry = tk.Entry(frame5)
+        tk.Label(frame20, text="lavitage from ground (m):").pack(side=tk.LEFT)
+        self.lavitage_entry = tk.Entry(frame20)
         self.lavitage_entry.insert(0, "0")  # Default value
         self.lavitage_entry.pack(side=tk.LEFT)
 
-        tk.Label(frame5, text="Tilt Angle (deg):").pack(side=tk.LEFT)
-        self.tilt_angle_entry = tk.Entry(frame5)
+        tk.Label(frame20, text="Tilt Angle (deg):").pack(side=tk.LEFT)
+        self.tilt_angle_entry = tk.Entry(frame20)
         self.tilt_angle_entry.insert(0, "10")  # Default value
         self.tilt_angle_entry.pack(side=tk.LEFT)
 
@@ -483,25 +481,25 @@ class SolarPlanelPlacerApp:
 
         # Checkbox for prohibiting points
         self.tree_var = tk.IntVar()
-        self.tree_checkbox = tk.Checkbutton(frame5, text="Tree", variable=self.tree_var, command=self.toggle_tree_cb, state=tk.DISABLED)
+        self.tree_checkbox = tk.Checkbutton(frame20, text="Tree", variable=self.tree_var, command=self.toggle_tree_cb, state=tk.DISABLED)
         self.tree_checkbox.pack(side=tk.LEFT)
         
         
         # Create a frame
-        frame6 = tk.Frame(tab2)
-        frame6.pack(side=tk.TOP)
+        frame21 = tk.Frame(tab2)
+        frame21.pack(side=tk.TOP)
 
-        self.cal_shadow_button = tk.Button(frame6, text="Calculate Shadow", command=self.calculate_shadows_btn, state=tk.DISABLED)
+        self.cal_shadow_button = tk.Button(frame21, text="Calculate Shadow", command=self.calculate_shadows_btn, state=tk.DISABLED)
         self.cal_shadow_button.pack(side=tk.LEFT)
-        self.hide_shadow_button = tk.Button(frame6, text="Hide Shadow", command=self.hide_shadows_btn, state=tk.DISABLED)
+        self.hide_shadow_button = tk.Button(frame21, text="Hide Shadow", command=self.hide_shadows_btn, state=tk.DISABLED)
         self.hide_shadow_button.pack(side=tk.LEFT)
-        self.clear_trees_button = tk.Button(frame6, text="Clear Trees", command=self.clear_trees_btn, state=tk.DISABLED)
+        self.clear_trees_button = tk.Button(frame21, text="Clear Trees", command=self.clear_trees_btn, state=tk.DISABLED)
         self.clear_trees_button.pack(side=tk.LEFT)
 
-        frame7 = tk.Frame(tab2)
-        frame7.pack(side=tk.TOP)
+        frame22 = tk.Frame(tab2)
+        frame22.pack(side=tk.TOP)
 
-        self.province_label = tk.Label(frame7, text="province: ")
+        self.province_label = tk.Label(frame22, text="province: ")
         self.province_label.pack(side=tk.LEFT)
 
         # Create and add the second tab (Tab 3)
@@ -509,13 +507,13 @@ class SolarPlanelPlacerApp:
         self.notebook.add(tab3, text='PVOUT/Year')
 
         # Create a frame
-        frame8 = tk.Frame(tab3)
-        frame8.pack(side=tk.TOP)
+        frame30 = tk.Frame(tab3)
+        frame30.pack(side=tk.TOP)
 
 
         # Entry widget for small_gap_height
-        tk.Label(frame8, text="Specific photovoltaic power output per year (kWh/kWp):").pack(side=tk.LEFT)
-        self.pvout_entry = tk.Entry(frame8)
+        tk.Label(frame30, text="Specific photovoltaic power output per year (kWh/kWp):").pack(side=tk.LEFT)
+        self.pvout_entry = tk.Entry(frame30)
         self.pvout_entry.insert(0, "1433.2")  # Set default value
         self.pvout_entry.pack(side=tk.LEFT)
         # float(self.pvout_entry.get())
@@ -523,21 +521,43 @@ class SolarPlanelPlacerApp:
         # Checkbox for prohibiting points
         self.pvout_en_var = tk.IntVar()
         self.pvout_en_var.set(1)
-        self.pvout_en_checkbox = tk.Checkbutton(frame8, text="", variable=self.pvout_en_var, command=self.toggle_pvout_en)
+        self.pvout_en_checkbox = tk.Checkbutton(frame30, text="", variable=self.pvout_en_var, command=self.toggle_pvout_en)
         self.pvout_en_checkbox.pack(side=tk.LEFT)
 
-        self.monthly_plot_button = tk.Button(frame8, text="Monthly Plot", command=self.monthly_plot_btn)
+        self.monthly_plot_button = tk.Button(frame30, text="Monthly Plot", command=self.monthly_plot_btn)
         self.monthly_plot_button.pack(side=tk.LEFT)
 
+        # Create and add the second tab (Tab 3)
+        tab4 = ttk.Frame(self.notebook)
+        self.notebook.add(tab4, text='arrays')
+
         # Create a frame
-        frame9 = tk.Frame(tab3)
-        frame9.pack(side=tk.TOP)
-        tk.Label(frame9, text="https://globalsolaratlas.info/map parameter.json").pack(side=tk.LEFT)
+        frame40 = tk.Frame(tab4)
+        frame40.pack(side=tk.TOP)
+        self.arrays_listbox = tk.Listbox(frame40, width=50, height=10)
+        self.arrays_listbox.pack(side=tk.LEFT)
+
+        self.arrays_listbox.bind("<Double-Button-1>", self.on_double_click_arrays_listbox)
+
 
         self.update_lat_lng()
         # Bind the tab selection event to the on_tab_selected function
         self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_selected)
 
+    def on_double_click_arrays_listbox(self, event):
+        selected_index = self.arrays_listbox.curselection()
+        if selected_index:
+            # Perform your action with the selected item (for example, print it)
+            # print("Double-clicked on item:", self.arrays_listbox.get(selected_index))
+            # print(f"selected_index= {selected_index[0]}")
+            self.pv_active = copy.deepcopy(self.panel_permanent_sets[selected_index[0]])
+            self.panel_permanent_sets.pop(selected_index[0])
+            self.update_listbox()
+            self.already_draw_panel = 1
+            self.calculate_panel_button["state"] = tk.NORMAL
+            self.new_panel_button["state"] = tk.NORMAL
+            self.update_panel_setting(self.pv_active)
+            self.update_canvas()
 
     def on_tab_selected(self, event):
         # Get the selected tab index
@@ -793,6 +813,17 @@ class SolarPlanelPlacerApp:
         self.new_panel_button["state"] = tk.DISABLED
         self.calculate_panel_button["state"] = tk.DISABLED
         self.clear_panel_button["state"] = tk.DISABLED
+        self.update_listbox()
+
+
+    def update_listbox(self):
+        # Clear the current display
+        self.arrays_listbox.delete(0, tk.END)
+
+        # Display each object in the list
+        for n,obj in enumerate(self.panel_permanent_sets):
+            self.arrays_listbox.insert(tk.END, f"PV_{n+1} : {obj.kWp} kW")
+
         
     
 
@@ -831,6 +862,7 @@ class SolarPlanelPlacerApp:
         self.cal_shadow_button["state"] = tk.DISABLED
         self.tree_var.set(0)
         self.tree_checkbox["state"] = tk.DISABLED
+        self.arrays_listbox.delete(0, tk.END)
  
 
     def add_keepout_btn(self):
@@ -902,7 +934,7 @@ class SolarPlanelPlacerApp:
             click_on_panel_conds.append(check_cond)
 
         if any(click_on_panel_conds):
-            print("click on panel")
+            pass
         else:
             self.points.append((x, y))
 
@@ -1114,13 +1146,15 @@ class SolarPlanelPlacerApp:
         point_cond = len(self.pv_active.panel_points) >= 4
         if draw_cond and point_cond:
             self.pv_active.calculate_panel(self.canvas, self.prohibited_permanent_sets)
+            
 
         total_panel_kWp = 0
         total_panel_detail_str = ""
-        for panel_permanent_array in self.panel_permanent_sets:
+        for n,panel_permanent_array in enumerate(self.panel_permanent_sets):
             panel_permanent_array.calculate_panel(self.canvas, self.prohibited_permanent_sets)
             total_panel_detail_str += f"{panel_permanent_array.kWp:,.1f} + "
             total_panel_kWp += panel_permanent_array.kWp
+            self.draw_text_description(n,panel_permanent_array)
         
         
         total_panel_detail_str += f"{self.pv_active.kWp} "
@@ -1154,6 +1188,7 @@ class SolarPlanelPlacerApp:
             x, y = area
             self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="yellow")
 
+        # draw reference points
         if not self.reference_points:
             if len(self.points) == 1:
                 x, y = self.points[0]
@@ -1163,9 +1198,25 @@ class SolarPlanelPlacerApp:
             x, y = point
             self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="purple")
 
+
         self.draw_active_area(self.pv_active)
 
+    def draw_text_description(self, n, panel_permanent_array):
+        if len(panel_permanent_array.panel_points) < 4:
+            return
+        
+        # Calculate approximate rectangle properties
+        # Use the last four points to calculate rectangle properties
+        # x_coords, y_coords = zip(*self.points[-4:])
+        points = np.array(panel_permanent_array.panel_points[-4:], dtype=np.int32)
 
+        # Find the minimum area rectangle using OpenCV
+        rect = cv2.minAreaRect(points)
+
+        # Draw boundary
+        center, size, angle = rect
+        x0,y0 = center
+        self.canvas.create_text(x0+5, y0+5, text=f"PV_{n+1}", fill="yellow", font=('Helvetica 10 bold'))
 
     def draw_active_area(self,solar_array):
         points = solar_array.panel_points
