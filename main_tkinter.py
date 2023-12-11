@@ -281,7 +281,7 @@ class SolarPlanelPlacerApp:
         self.points = []
 
         # Store object
-        self.pv1 = SolarArray([])
+        self.pv_active = SolarArray([])
         self.reference_points = []
         self.prohibited_points = []
         self.tree_points = []
@@ -294,8 +294,6 @@ class SolarPlanelPlacerApp:
         # Initial Variable & Flag
         self.already_draw_panel = 0
         self.already_draw_shadow = 0
-
-
 
         self.master = master
         width = self.master.winfo_screenwidth()
@@ -547,7 +545,7 @@ class SolarPlanelPlacerApp:
 
         # Print or do something based on the selected tab index
         # print(f"Tab {selected_tab_index + 1} selected")
-        self.update_panel_setting(self.pv1)
+        self.update_panel_setting(self.pv_active)
         self.update_canvas()
         self.update_lat_lng()
 
@@ -639,7 +637,7 @@ class SolarPlanelPlacerApp:
         # print(f"Value changed to: {current_value}")
 
         
-        self.update_panel_setting(self.pv1)
+        self.update_panel_setting(self.pv_active)
         self.update_canvas()
 
     def entry_changed2(self, event):
@@ -653,7 +651,7 @@ class SolarPlanelPlacerApp:
         # Do something with the current value, e.g., print it
         # print(f"Value changed to: {current_value}")
         self.update_lat_lng()
-        self.update_panel_setting(self.pv1)
+        self.update_panel_setting(self.pv_active)
         self.update_canvas()
 
 
@@ -668,11 +666,11 @@ class SolarPlanelPlacerApp:
             self.pvout_entry["state"] = tk.DISABLED
 
     def toggle_panel_rotation(self):
-        self.update_panel_setting(self.pv1)
+        self.update_panel_setting(self.pv_active)
         self.update_canvas()
 
     def toggle_walk_gap_rotation(self):
-        self.update_panel_setting(self.pv1)
+        self.update_panel_setting(self.pv_active)
         self.update_canvas()
 
 
@@ -729,7 +727,7 @@ class SolarPlanelPlacerApp:
         self.cal_shadow_button["state"] = tk.NORMAL
         self.tree_checkbox["state"] = tk.NORMAL
         self.new_panel_button["state"] = tk.NORMAL
-        self.update_panel_setting(self.pv1)
+        self.update_panel_setting(self.pv_active)
         self.update_canvas()
 
     def update_panel_setting(self, solar_array):
@@ -788,9 +786,9 @@ class SolarPlanelPlacerApp:
 
     def new_panel_btn(self):
         self.already_draw_panel = 0
-        self.update_panel_setting(self.pv1)
-        self.panel_permanent_sets.append(self.pv1.copy())
-        self.pv1.reset_to_initial_state()
+        self.update_panel_setting(self.pv_active)
+        self.panel_permanent_sets.append(self.pv_active.copy())
+        self.pv_active.reset_to_initial_state()
         self.update_canvas()
         self.new_panel_button["state"] = tk.DISABLED
         self.calculate_panel_button["state"] = tk.DISABLED
@@ -800,7 +798,7 @@ class SolarPlanelPlacerApp:
 
     def clear_canvas_btn(self):
         self.points = []
-        self.pv1.reset_to_initial_state()
+        self.pv_active.reset_to_initial_state()
         self.already_draw_panel = 0
         self.already_draw_shadow = 0
         self.update_canvas()
@@ -816,7 +814,7 @@ class SolarPlanelPlacerApp:
 
     def clear_all_canvas_btn(self):
         self.points = []
-        self.pv1.reset_to_initial_state()
+        self.pv_active.reset_to_initial_state()
         self.panel_permanent_sets = []
         self.prohibited_points = []
         self.prohibited_permanent_sets = []
@@ -838,7 +836,7 @@ class SolarPlanelPlacerApp:
     def add_keepout_btn(self):
         self.prohibited_permanent_sets.append(self.prohibited_points.copy())
         self.keepout_button["state"] = tk.DISABLED
-        self.update_panel_setting(self.pv1)
+        self.update_panel_setting(self.pv_active)
         self.update_canvas()
 
 
@@ -846,7 +844,7 @@ class SolarPlanelPlacerApp:
         self.already_draw_shadow = 1
         self.cal_shadow_button["state"] = tk.DISABLED
         self.hide_shadow_button["state"] = tk.NORMAL
-        self.update_panel_setting(self.pv1)
+        self.update_panel_setting(self.pv_active)
         self.update_canvas()
 
     
@@ -854,7 +852,7 @@ class SolarPlanelPlacerApp:
         self.already_draw_shadow = 0
         self.hide_shadow_button["state"] = tk.DISABLED
         self.cal_shadow_button["state"] = tk.NORMAL
-        self.update_panel_setting(self.pv1)
+        self.update_panel_setting(self.pv_active)
         self.update_canvas()
 
 
@@ -862,15 +860,15 @@ class SolarPlanelPlacerApp:
         self.tree_points = []
         self.tree_permanent_sets = []
         self.clear_trees_button["state"] = tk.DISABLED
-        self.update_panel_setting(self.pv1)
+        self.update_panel_setting(self.pv_active)
         self.update_canvas()
 
     def on_canvas_enter(self,event):
-        self.update_panel_setting(self.pv1)
+        self.update_panel_setting(self.pv_active)
         self.update_canvas()
 
     def on_canvas_leave(self,event):
-        self.update_panel_setting(self.pv1)
+        self.update_panel_setting(self.pv_active)
         self.update_canvas()
 
     def on_canvas_click(self, event):
@@ -895,8 +893,8 @@ class SolarPlanelPlacerApp:
         x, y = event.x, event.y
 
         click_on_panel_conds = []
-        if self.pv1.panel_points:
-            check_cond = point_in_polygon(x,y,self.pv1.panel_points)
+        if self.pv_active.panel_points:
+            check_cond = point_in_polygon(x,y,self.pv_active.panel_points)
             click_on_panel_conds.append(check_cond)
         
         for panel_permanent_array in self.panel_permanent_sets:
@@ -975,10 +973,10 @@ class SolarPlanelPlacerApp:
             rect = cv2.minAreaRect(points)
             box = cv2.boxPoints(rect)
             box = np.int_(box)
-            self.pv1.panel_points = box.tolist()
+            self.pv_active.panel_points = box.tolist()
             self.points = []
 
-        self.update_panel_setting(self.pv1)
+        self.update_panel_setting(self.pv_active)
         self.update_canvas()
 
     
@@ -1001,7 +999,7 @@ class SolarPlanelPlacerApp:
         if len(self.prohibited_points)== 4:
             self.keepout_button["state"] = tk.NORMAL
         self.already_draw_panel = 0
-        self.update_panel_setting(self.pv1)
+        self.update_panel_setting(self.pv_active)
         self.update_canvas()
 
 
@@ -1103,7 +1101,7 @@ class SolarPlanelPlacerApp:
         # draw panel shadow
         if self.already_draw_panel == 1:
             for shadow_datetime in self.shadow_datetimes:
-                self.calculate_panel_shadow(shadow_datetime,self.pv1.panel_points)
+                self.calculate_panel_shadow(shadow_datetime,self.pv_active.panel_points)
 
         for panel_permanent_array in self.panel_permanent_sets:
             for shadow_datetime in self.shadow_datetimes:
@@ -1113,9 +1111,9 @@ class SolarPlanelPlacerApp:
         
         # draw panel
         draw_cond = self.already_draw_panel == 1
-        point_cond = len(self.pv1.panel_points) >= 4
+        point_cond = len(self.pv_active.panel_points) >= 4
         if draw_cond and point_cond:
-            self.pv1.calculate_panel(self.canvas, self.prohibited_permanent_sets)
+            self.pv_active.calculate_panel(self.canvas, self.prohibited_permanent_sets)
 
         total_panel_kWp = 0
         total_panel_detail_str = ""
@@ -1125,10 +1123,10 @@ class SolarPlanelPlacerApp:
             total_panel_kWp += panel_permanent_array.kWp
         
         
-        total_panel_detail_str += f"{self.pv1.kWp} "
-        total_panel_kWp += self.pv1.kWp
-        tilt_ratio = self.tilt_calcutation(self.pv1.tilt_angle)
-        angle = min(self.pv1.azimuth_angle, 90 - self.pv1.azimuth_angle)
+        total_panel_detail_str += f"{self.pv_active.kWp} "
+        total_panel_kWp += self.pv_active.kWp
+        tilt_ratio = self.tilt_calcutation(self.pv_active.tilt_angle)
+        angle = min(self.pv_active.azimuth_angle, 90 - self.pv_active.azimuth_angle)
         PVSYST_ratio = 0.87
         try:
             kWp_to_kWh = float(self.pvout_entry.get()) # per year
@@ -1165,20 +1163,23 @@ class SolarPlanelPlacerApp:
             x, y = point
             self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="purple")
 
-        for n,point in enumerate(self.pv1.panel_points):
+        self.draw_active_area(self.pv_active)
+
+
+
+    def draw_active_area(self,solar_array):
+        points = solar_array.panel_points
+        for n,point in enumerate(points):
             x, y = point
             self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="blue")
             # self.canvas.create_text(x +10 , y, text=f"{n}", fill="black", font=('Helvetica 10 bold'))
             
-
-        if len(self.pv1.panel_points) > 0:
-            for i in range(len(self.pv1.panel_points)-1):
-                x0,y0 = self.pv1.panel_points[i]
-                x1,y1 = self.pv1.panel_points[i+1]
+        if len(points) > 0:
+            for i in range(len(points)-1):
+                x0,y0 = points[i]
+                x1,y1 = points[i+1]
                 self.canvas.create_line(x0, y0,x1, y1, fill="orange")
-            self.canvas.create_line(self.pv1.panel_points[0][0], self.pv1.panel_points[0][1], self.pv1.panel_points[-1][0], self.pv1.panel_points[-1][1], fill="orange")
-
-
+            self.canvas.create_line(points[0][0], points[0][1], points[-1][0], points[-1][1], fill="orange")
 
 
     def calculate_panel_shadow(self, date_input_str, selected_points, color="black", stipple="gray50"):
