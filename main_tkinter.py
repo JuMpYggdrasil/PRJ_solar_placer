@@ -1133,11 +1133,11 @@ class SolarPlanelPlacerApp:
         # draw panel shadow
         if self.already_draw_panel == 1:
             for shadow_datetime in self.shadow_datetimes:
-                self.calculate_panel_shadow(shadow_datetime,self.pv_active.panel_points)
+                self.calculate_panel_shadow(self.canvas, shadow_datetime, self.pv_active)
 
         for panel_permanent_array in self.panel_permanent_sets:
             for shadow_datetime in self.shadow_datetimes:
-                self.calculate_panel_shadow(shadow_datetime,panel_permanent_array.panel_points)
+                self.calculate_panel_shadow(self.canvas, shadow_datetime, panel_permanent_array)
 
         
         
@@ -1233,7 +1233,8 @@ class SolarPlanelPlacerApp:
             self.canvas.create_line(points[0][0], points[0][1], points[-1][0], points[-1][1], fill="orange")
 
 
-    def calculate_panel_shadow(self, date_input_str, selected_points, color="black", stipple="gray50"):
+    def calculate_panel_shadow(self, canvas, date_input_str, solar_array, color="black", stipple="gray50"):
+        selected_points = solar_array.panel_points
         if self.already_draw_shadow == 0:
             return
         
@@ -1241,29 +1242,18 @@ class SolarPlanelPlacerApp:
             return
         
         self.update_lat_lng()
-        lavitage_height_str = self.lavitage_entry.get()
-        
         local_datetime = datetime.datetime.strptime(date_input_str, "%Y/%m/%d %H:%M:%S")
-        if local_datetime.month <7:
-            color="gray2"
-        else:
-            color="gray4"
         pytz.timezone(self.tz)
 
         # Convert input to appropriate types
         # -Convert local to UTC
         date = local_datetime.astimezone(pytz.utc)
-        try:
-            lavitage_height = float(lavitage_height_str)
-        except ValueError:
-            lavitage_height = 0
+        
+        lavitage_height = solar_array.lavitation
 
         # Calculate solar position using pysolar
         solar_altitude = get_altitude(self.Latitude, self.Longitude, date)
         solar_azimuth = get_azimuth(self.Latitude, self.Longitude, date)
-        # print(solar_azimuth)
-        # print(solar_altitude)
-
         shadow_azimuth = solar_azimuth + 90
 
         # Calculate shadow length
@@ -1276,8 +1266,6 @@ class SolarPlanelPlacerApp:
         # Calculate shadow direction using azimuth
         shadow_direction_x = shadow_length * math.cos(math.radians(shadow_azimuth))
         shadow_direction_y = shadow_length * math.sin(math.radians(shadow_azimuth))
-
-        
 
         
         # Draw shadow lines from each corner of the rectangle
@@ -1301,7 +1289,7 @@ class SolarPlanelPlacerApp:
         # self.canvas.create_line(selected_points[-1][0], selected_points[-1][1], shadow_end_x4, shadow_end_y4, fill="black")
         
         # Draw the rotated rectangle on the canvas
-        self.canvas.create_polygon(shadow_end_x1, shadow_end_y1, shadow_end_x2, shadow_end_y2, shadow_end_x3, shadow_end_y3, shadow_end_x4, shadow_end_y4, fill=color, stipple=stipple)
+        canvas.create_polygon(shadow_end_x1, shadow_end_y1, shadow_end_x2, shadow_end_y2, shadow_end_x3, shadow_end_y3, shadow_end_x4, shadow_end_y4, fill=color, stipple=stipple)
 
     
     def calculate_trees_shadow(self, date_input_str, color="black", stipple="gray50"):
