@@ -15,6 +15,7 @@ import calendar
 import json
 import os
 import copy
+from plot_solar import plot_solar_analemma
 
 jsondata = None
 
@@ -513,6 +514,9 @@ class SolarPlanelPlacerApp:
         self.clear_trees_button = tk.Button(frame21, text="Clear Trees", command=self.clear_trees_btn, state=tk.DISABLED)
         self.clear_trees_button.pack(side=tk.LEFT)
 
+        self.sun_path_plot_button = tk.Button(frame21, text="Sun-Path Plot", command=self.sun_path_plot_btn)
+        self.sun_path_plot_button.pack(side=tk.LEFT)
+
         frame22 = tk.Frame(tab2)
         frame22.pack(side=tk.TOP)
 
@@ -544,19 +548,34 @@ class SolarPlanelPlacerApp:
         self.monthly_plot_button = tk.Button(frame30, text="Monthly Plot", command=self.monthly_plot_btn)
         self.monthly_plot_button.pack(side=tk.LEFT)
 
-        # Create and add the second tab (Tab 4)
-        tab4 = ttk.Frame(self.notebook)
-        self.notebook.add(tab4, text='Array List')
+        # # Create and add the second tab (Tab 4)
+        # tab4 = ttk.Frame(self.notebook)
+        # self.notebook.add(tab4, text='Sun Path')
 
-        # Create a frame
+        # # Create a frame
         # frame40 = tk.Frame(tab4)
-        # frame40.pack(side=tk.TOP,expand=True,fill=tk.BOTH)
+        # frame40.pack(side=tk.TOP,fill=tk.X)
+
         
+
 
 
         self.update_lat_lng()
         # Bind the tab selection event to the on_tab_selected function
         self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_selected)
+
+    def sun_path_plot_btn(self):
+        self.update_lat_lng()
+        try:
+            user_lat = float(self.lat_entry.get())
+        except ValueError:
+            user_lat = 0
+        try:
+            user_lng = float(self.lon_entry.get())
+        except ValueError:
+            user_lng = 0
+        plot_solar_analemma(lat=user_lat, lon=user_lng, start_date='2021-01-01 00:00:00', end_date='2022-01-01', timezone=self.tz)
+        pass
 
     def on_double_click_arrays_listbox(self, event):
         selected_index = self.arrays_listbox.curselection()
