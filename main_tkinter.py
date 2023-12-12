@@ -315,35 +315,42 @@ class SolarPlanelPlacerApp:
         tab1 = ttk.Frame(self.notebook)
         self.notebook.add(tab1, text='Panel Layout')
         
+        superframe10 = tk.Frame(tab1)
+        superframe10.pack(side=tk.TOP,fill=tk.X)
+
+        superframe10_left = tk.Frame(superframe10)
+        superframe10_left.pack(side=tk.LEFT,fill=tk.BOTH,expand=True)
+
+
+        frame10 = tk.Frame(superframe10_left)
+        frame10.pack(side=tk.TOP)
         
-        frame4 = tk.Frame(tab1)
-        frame4.pack(side=tk.TOP)
 
         # Add a button to browse and load an image
-        self.browse_button = tk.Button(frame4, text="Browse Image", command=self.browse_image_btn)
+        self.browse_button = tk.Button(frame10, text="Browse Image", command=self.browse_image_btn)
         self.browse_button.pack(side=tk.LEFT)
 
         # Entry widget for gap_width
-        tk.Label(frame4, text="Gap Width (m):").pack(side=tk.LEFT)
-        self.gap_width_entry = tk.Entry(frame4)
+        tk.Label(frame10, text="Gap Width (m):").pack(side=tk.LEFT)
+        self.gap_width_entry = tk.Entry(frame10)
         self.gap_width_entry.insert(0, "0.2")  # Set default value
         self.gap_width_entry.pack(side=tk.LEFT)
 
         # Entry widget for small_gap_height
-        tk.Label(frame4, text="Gap Height (m):").pack(side=tk.LEFT)
-        self.gap_height_entry = tk.Entry(frame4)
+        tk.Label(frame10, text="Gap Height (m):").pack(side=tk.LEFT)
+        self.gap_height_entry = tk.Entry(frame10)
         self.gap_height_entry.insert(0, "0.2")  # Set default value
         self.gap_height_entry.pack(side=tk.LEFT)
         
         # Entry widget for big_gap_height
-        tk.Label(frame4, text="Walk Gap (m):").pack(side=tk.LEFT)
-        self.walk_gap_entry = tk.Entry(frame4)
+        tk.Label(frame10, text="Walk Gap (m):").pack(side=tk.LEFT)
+        self.walk_gap_entry = tk.Entry(frame10)
         self.walk_gap_entry.insert(0, "0.6")  # Set default value
         self.walk_gap_entry.pack(side=tk.LEFT)
 
         # Entry widget for big_gap_height
-        tk.Label(frame4, text="Setback (m):").pack(side=tk.LEFT)
-        self.setback_entry = tk.Entry(frame4)
+        tk.Label(frame10, text="Setback (m):").pack(side=tk.LEFT)
+        self.setback_entry = tk.Entry(frame10)
         self.setback_entry.insert(0, "0")  # Set default value
         self.setback_entry.pack(side=tk.LEFT)
 
@@ -361,24 +368,24 @@ class SolarPlanelPlacerApp:
 
         # Checkbox for prohibiting points
         self.panel_rotate_var = tk.IntVar()
-        self.panel_rotate_checkbox = tk.Checkbutton(frame4, text="panel rotation", variable=self.panel_rotate_var, command=self.toggle_panel_rotation)
+        self.panel_rotate_checkbox = tk.Checkbutton(frame10, text="panel rotation", variable=self.panel_rotate_var, command=self.toggle_panel_rotation)
         self.panel_rotate_checkbox.pack(side=tk.LEFT)
 
         # Checkbox for prohibiting points
         self.walk_gap_rotate_var = tk.IntVar()
-        self.walk_gap_rotate_checkbox = tk.Checkbutton(frame4, text="walk gap rotation", variable=self.walk_gap_rotate_var, command=self.toggle_walk_gap_rotation)
+        self.walk_gap_rotate_checkbox = tk.Checkbutton(frame10, text="walk gap rotation", variable=self.walk_gap_rotate_var, command=self.toggle_walk_gap_rotation)
         self.walk_gap_rotate_checkbox.pack(side=tk.LEFT)
 
 
         # Create a frame for the first line (area_label and distance_label)
-        frame10 = tk.Frame(tab1)
-        frame10.pack(side=tk.TOP)
+        frame11 = tk.Frame(superframe10_left)
+        frame11.pack(side=tk.TOP)
 
         # Create a label to display the measured area
-        self.area_label = tk.Label(frame10, text="Area: ")
+        self.area_label = tk.Label(frame11, text="Area: ")
         self.area_label.pack(side=tk.LEFT)
 
-        self.distance_label = tk.Label(frame10, text="Distance: ")
+        self.distance_label = tk.Label(frame11, text="Distance: ")
         self.distance_label.pack(side=tk.LEFT)
 
         # Zoom factor
@@ -400,42 +407,55 @@ class SolarPlanelPlacerApp:
         self.canvas.bind("<Motion>", self.on_canvas_motion)
 
         # Create a frame for the second line (buttons)
-        frame11 = tk.Frame(tab1)
-        frame11.pack(side=tk.TOP)
+        frame12 = tk.Frame(superframe10_left)
+        frame12.pack(side=tk.TOP)
 
         
 
         # Create a Combobox for panel types
         panel_types = list(panel_info.keys())
         self.panel_type_var = tk.StringVar(value=panel_types[0])  # Set the default panel type
-        self.panel_type_combobox = ttk.Combobox(frame11, textvariable=self.panel_type_var, values=panel_types)
+        self.panel_type_combobox = ttk.Combobox(frame12, textvariable=self.panel_type_var, values=panel_types)
         self.panel_type_combobox.pack(side=tk.LEFT)
 
         # Create a button to calculate rectangle properties based on the selected panel type
-        # self.calculate_panel_button = tk.Button(frame11, text="PV Panel", command=threading.Thread(target=self.calculate_panel_btn).start(), state=tk.DISABLED)
-        self.calculate_panel_button = tk.Button(frame11, text="PV Panel", command=self.calculate_panel_btn, state=tk.DISABLED)
+        # self.calculate_panel_button = tk.Button(frame12, text="PV Panel", command=threading.Thread(target=self.calculate_panel_btn).start(), state=tk.DISABLED)
+        self.calculate_panel_button = tk.Button(frame12, text="PV Panel", command=self.calculate_panel_btn, state=tk.DISABLED)
         self.calculate_panel_button.pack(side=tk.LEFT)
 
-        self.new_panel_button = tk.Button(frame11, text="Save Panel", command=self.new_panel_btn, state=tk.DISABLED)
+        self.new_panel_button = tk.Button(frame12, text="Save Panel", command=self.new_panel_btn, state=tk.DISABLED)
         self.new_panel_button.pack(side=tk.LEFT)
 
-        self.clear_panel_button = tk.Button(frame11, text="Clear Panel", command=self.clear_canvas_btn, state=tk.DISABLED)
+        self.clear_panel_button = tk.Button(frame12, text="Clear Panel", command=self.clear_canvas_btn, state=tk.DISABLED)
         self.clear_panel_button.pack(side=tk.LEFT)
 
-        self.keepout_button = tk.Button(frame11, text="Keepout", command=self.add_keepout_btn, state=tk.DISABLED)
+        self.keepout_button = tk.Button(frame12, text="Keepout", command=self.add_keepout_btn, state=tk.DISABLED)
         self.keepout_button.pack(side=tk.LEFT)
 
-        self.clear_all_button = tk.Button(frame11, text="Clear All", command=self.clear_all_canvas_btn)
+        self.clear_all_button = tk.Button(frame12, text="Clear All", command=self.clear_all_canvas_btn)
         self.clear_all_button.pack(side=tk.LEFT)
 
 
         # Create a frame for the third line (total_rectangles_label)
-        frame12 = tk.Frame(tab1)
-        frame12.pack(side=tk.TOP)
+        frame13 = tk.Frame(superframe10_left)
+        frame13.pack(side=tk.TOP)
 
         # Create a label to display the total number of rectangles
-        self.total_rectangles_label = tk.Label(frame12, text="Total Rectangles: 0")
+        self.total_rectangles_label = tk.Label(frame13, text="Total Rectangles: 0")
         self.total_rectangles_label.pack(side=tk.LEFT)
+
+
+
+        superframe10_right = tk.Frame(superframe10)
+        superframe10_right.pack(side=tk.RIGHT)
+
+        frame40 = tk.Frame(superframe10_right)
+        frame40.pack(side=tk.TOP,expand=True,fill=tk.BOTH)
+        self.arrays_listbox = tk.Listbox(frame40, width=40)
+        self.arrays_listbox.pack(side=tk.LEFT)
+
+        self.arrays_listbox.bind("<Double-Button-1>", self.on_double_click_arrays_listbox)
+
         
         # Create and add the second tab (Tab 2)
         tab2 = ttk.Frame(self.notebook)
@@ -524,17 +544,14 @@ class SolarPlanelPlacerApp:
         self.monthly_plot_button = tk.Button(frame30, text="Monthly Plot", command=self.monthly_plot_btn)
         self.monthly_plot_button.pack(side=tk.LEFT)
 
-        # Create and add the second tab (Tab 3)
+        # Create and add the second tab (Tab 4)
         tab4 = ttk.Frame(self.notebook)
         self.notebook.add(tab4, text='Array List')
 
         # Create a frame
-        frame40 = tk.Frame(tab4)
-        frame40.pack(side=tk.TOP)
-        self.arrays_listbox = tk.Listbox(frame40, width=50, height=10)
-        self.arrays_listbox.pack(side=tk.LEFT)
-
-        self.arrays_listbox.bind("<Double-Button-1>", self.on_double_click_arrays_listbox)
+        # frame40 = tk.Frame(tab4)
+        # frame40.pack(side=tk.TOP,expand=True,fill=tk.BOTH)
+        
 
 
         self.update_lat_lng()
@@ -563,7 +580,7 @@ class SolarPlanelPlacerApp:
             return
         
         self.setback_entry.delete(0,tk.END)
-        self.setback_entry.insert(0,solar_array.setback_length)
+        self.setback_entry.insert(0,round(solar_array.setback_length*self.scale_factor,1))
 
         
         self.panel_rotate_var.set(solar_array.panel_rotation_tick)
@@ -796,28 +813,35 @@ class SolarPlanelPlacerApp:
         small_rect_size = (small_rect_width,small_rect_height)
         solar_array.small_rect_size = small_rect_size
 
-        if solar_array.walk_gap_rotation_tick == 1:
-            big_gap_width = float(self.walk_gap_entry.get()) / self.scale_factor
-            small_gap_width = float(self.gap_width_entry.get()) / self.scale_factor
-            gap_width = big_gap_width*1/2+small_gap_width*1/2
+        try:
+            if solar_array.walk_gap_rotation_tick == 1:
+                big_gap_width = float(self.walk_gap_entry.get()) / self.scale_factor
+                small_gap_width = float(self.gap_width_entry.get()) / self.scale_factor
+                gap_width = big_gap_width*1/2+small_gap_width*1/2
 
-            small_gap_height = float(self.gap_height_entry.get()) / self.scale_factor
-            big_gap_height = small_gap_height
-            gap_height = small_gap_height
+                small_gap_height = float(self.gap_height_entry.get()) / self.scale_factor
+                big_gap_height = small_gap_height
+                gap_height = small_gap_height
 
-        else:
-            small_gap_width = float(self.gap_width_entry.get()) / self.scale_factor
-            big_gap_width = small_gap_width
-            gap_width = small_gap_width
+            else:
+                small_gap_width = float(self.gap_width_entry.get()) / self.scale_factor
+                big_gap_width = small_gap_width
+                gap_width = small_gap_width
 
-            big_gap_height = float(self.walk_gap_entry.get()) / self.scale_factor
-            small_gap_height = float(self.gap_height_entry.get()) / self.scale_factor
-            gap_height = big_gap_height*1/2+small_gap_height*1/2
-        gap_size = (big_gap_width,big_gap_height,small_gap_width,small_gap_height,gap_width,gap_height)
-        solar_array.gap_size = gap_size
+                big_gap_height = float(self.walk_gap_entry.get()) / self.scale_factor
+                small_gap_height = float(self.gap_height_entry.get()) / self.scale_factor
+                gap_height = big_gap_height*1/2+small_gap_height*1/2
+            gap_size = (big_gap_width,big_gap_height,small_gap_width,small_gap_height,gap_width,gap_height)
+            solar_array.gap_size = gap_size
+        except:
+            pass
 
-        solar_array.tilt_angle = float(self.tilt_angle_entry.get())
-        solar_array.lavitation = float(self.lavitage_entry.get())
+        try:
+            solar_array.tilt_angle = float(self.tilt_angle_entry.get())
+            solar_array.lavitation = float(self.lavitage_entry.get())
+        except:
+            solar_array.tilt_angle = 0
+            solar_array.lavitation = 0
 
         
 
