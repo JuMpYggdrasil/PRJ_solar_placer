@@ -1,62 +1,54 @@
 import tkinter as tk
+from tkinter import ttk
+from ttkthemes import ThemedTk
 
-class Human:
-    def __init__(self):
-        self.name = ""
-        self.age = 0
-        self.height = 0.0
+class SolarPanelPlacerApp:
+    def __init__(self, master):
+        self.master = master
+        master.title("Equilux Themed Solar Panel Placer App")
 
-    def input_information(self, name, age, height):
-        self.name = name
-        self.age = age
-        self.height = height
+        # Create and add the notebook
+        self.notebook = ttk.Notebook(master)
+        self.notebook.pack(fill=tk.BOTH, expand=True)
 
-    def display_information(self):
-        return f"Name: {self.name}, Age: {self.age} years, Height: {self.height} meters"
+        # Create and add the first tab (Tab 1)
+        tab1 = ttk.Frame(self.notebook)
+        self.notebook.add(tab1, text='Panel Layout')
 
+        # Create frames within Tab 1
+        superframe10 = ttk.Frame(tab1)
+        superframe10.pack(side=tk.TOP, fill=tk.X)
 
-class NameListApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Name List App")
+        superframe10_left = ttk.Frame(superframe10)
+        superframe10_left.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        self.name_entry = tk.Entry(root)
-        self.name_entry.pack(pady=5)
+        frame10 = ttk.Frame(superframe10_left)
+        frame10.pack(side=tk.TOP)
 
-        self.age_entry = tk.Entry(root)
-        self.age_entry.pack(pady=5)
+        # Add a button to browse and load an image (ttk.Button)
+        self.browse_button = ttk.Button(frame10, text="Browse Image", command=self.browse_image_btn)
+        self.browse_button.pack(side=tk.LEFT)
 
-        self.height_entry = tk.Entry(root)
-        self.height_entry.pack(pady=5)
+        # Entry widget for gap_width
+        ttk.Label(frame10, text="Gap Width (m):").pack(side=tk.LEFT)
+        self.gap_width_entry = ttk.Entry(frame10)
+        self.gap_width_entry.insert(0, "0.2")  # Set default value
+        self.gap_width_entry.pack(side=tk.LEFT)
 
-        self.add_button = tk.Button(root, text="Add Information", command=self.add_information)
-        self.add_button.pack(pady=10)
+    def browse_image_btn(self):
+        # Implement the functionality for the browse_image_btn if needed
+        pass
 
-        self.names_listbox = tk.Listbox(root)
-        self.names_listbox.pack(pady=10)
+def main():
+    # Create an instance of ThemedTk
+    root = ThemedTk(theme="equilux")
 
-        self.human_list = []
+    # Create an instance of your app
+    app = SolarPanelPlacerApp(root)
 
-    def add_information(self):
-        name = self.name_entry.get()
-        age = int(self.age_entry.get())
-        height = float(self.height_entry.get())
-
-        if name and age and height:
-            person = Human()
-            person.input_information(name, age, height)
-            self.human_list.append(person)
-
-            # Display information in the listbox
-            self.names_listbox.insert(tk.END, person.display_information())
-
-            # Clear entry fields
-            self.name_entry.delete(0, tk.END)
-            self.age_entry.delete(0, tk.END)
-            self.height_entry.delete(0, tk.END)
-
-
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = NameListApp(root)
+    # Run the Tkinter main loop
     root.mainloop()
+
+# Run the main function when the script is executed
+if __name__ == "__main__":
+    main()

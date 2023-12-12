@@ -250,7 +250,7 @@ class SolarArray:
          self.panel_rotation_tick, self.walk_gap_rotation_tick, self.setback_length,
          self.gap_size, self.small_rect_size) = self._initial_state
       
-class SolarPlanelPlacerApp:
+class SolarPlanelEstimationApp:
     def __init__(self, master):
         self.master = master
         width = self.master.winfo_screenwidth()
@@ -1583,7 +1583,7 @@ class SolarPlanelPlacerApp:
 def main():
     root = ThemedTk(theme="equilux")
     # root = tk.Tk()
-    app = SolarPlanelPlacerApp(root)
+    app = SolarPlanelEstimationApp(root)
     root.mainloop()
 
 
