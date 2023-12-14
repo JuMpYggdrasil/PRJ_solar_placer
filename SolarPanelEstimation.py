@@ -38,9 +38,12 @@ if os.path.exists(json_file_path):
     with open(json_file_path, "r", encoding='utf-8') as json_file:
         jsondata = json.load(json_file)
         loaded_panel_info = jsondata["panel_info"]
+
         
     # Update panel_info with the loaded data
     panel_info.update(loaded_panel_info)
+
+
 
 class SolarArray:
     def __init__(self, panel_points):
@@ -279,6 +282,24 @@ class SolarPlanelEstimationApp:
         self.tz = 'Asia/Bangkok'
         self.Latitude = 13.765733827940576
         self.Longitude = 100.50257304756634
+        self.Lat_Lng_First_time = True
+
+        # try:
+        # Check if the JSON file exists
+        if os.path.exists(json_file_path):
+            # Load panel_info from the JSON file
+            with open(json_file_path, "r", encoding='utf-8') as json_file:
+                jsondata = json.load(json_file)
+                lat_info = jsondata["latitude"]
+                lng_info = jsondata["longitude"]
+                
+            # Update panel_info with the loaded data
+            self.Latitude = lat_info
+            self.Longitude = lng_info
+        # except:
+        #     pass
+        
+        
 
         self.kWh_total = 0
 
@@ -357,7 +378,7 @@ class SolarPlanelEstimationApp:
         # Entry widget for big_gap_height
         ttk.Label(frame10, text="Setback (m):").pack(side=tk.LEFT)
         self.setback_entry = ttk.Entry(frame10)
-        self.setback_entry.insert(0, "0")  # Set default value
+        self.setback_entry.insert(0, "0.5")  # Set default value
         self.setback_entry.pack(side=tk.LEFT)
 
         
@@ -429,7 +450,7 @@ class SolarPlanelEstimationApp:
         self.calculate_panel_button = ttk.Button(frame12, text="PV Panel", command=self.calculate_panel_btn, state=tk.DISABLED)
         self.calculate_panel_button.pack(side=tk.LEFT)
 
-        self.new_panel_button = ttk.Button(frame12, text="Save Panel", command=self.new_panel_btn, state=tk.DISABLED)
+        self.new_panel_button = ttk.Button(frame12, text="Save Panel", command=self.save_panel_btn, state=tk.DISABLED)
         self.new_panel_button.pack(side=tk.LEFT)
 
         self.clear_panel_button = ttk.Button(frame12, text="Clear Panel", command=self.clear_canvas_btn, state=tk.DISABLED)
@@ -496,11 +517,12 @@ class SolarPlanelEstimationApp:
         # Bind the <FocusOut> event to the callback function
         self.lat_entry.bind("<FocusOut>", self.entry_changed2)
         self.lat_entry.bind("<Return>", self.entry_changed2)
-
         self.lon_entry.bind("<FocusOut>", self.entry_changed2)
         self.lon_entry.bind("<Return>", self.entry_changed2)
         self.lavitage_entry.bind("<FocusOut>", self.entry_changed2)
+        self.lavitage_entry.bind("<Return>", self.entry_changed2)
         self.tilt_angle_entry.bind("<FocusOut>", self.entry_changed2)
+        self.tilt_angle_entry.bind("<Return>", self.entry_changed2)
 
         # Checkbox for prohibiting points
         self.tree_var = tk.IntVar()
@@ -562,12 +584,12 @@ class SolarPlanelEstimationApp:
         # frame40.pack(side=tk.TOP,fill=tk.X)
 
         
-
+        # Bind the tab selection event to the on_tab_selected function
+        self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_selected)
 
 
         self.update_lat_lng()
-        # Bind the tab selection event to the on_tab_selected function
-        self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_selected)
+
 
     def sun_path_plot_btn(self):
         self.update_lat_lng()
@@ -594,6 +616,7 @@ class SolarPlanelEstimationApp:
             self.already_draw_panel = 1
             self.calculate_panel_button["state"] = tk.NORMAL
             self.new_panel_button["state"] = tk.NORMAL
+            self.clear_panel_button["state"] = tk.NORMAL
             self.restore_panel_setting(self.pv_active)
             self.update_panel_setting(self.pv_active)
             self.update_canvas()
@@ -785,10 +808,39 @@ class SolarPlanelEstimationApp:
             user_lng = float(self.lon_entry.get())
         except ValueError:
             user_lng = 0
+
+        lat_cond = self.Latitude == user_lat
+        lng_cond = self.Longitude == user_lng
+        if lat_cond and lng_cond:
+            if self.Lat_Lng_First_time:
+                self.pvout, self.province = self.get_pvout(self.Latitude,self.Longitude)
+                if self.pvout:
+                    self.province_label.config(text=f"province: {self.province}")
+
+                    if self.pvout_en_var.get() == 1:
+                        self.pvout_entry.delete(0,tk.END)
+                        self.pvout_entry.insert(0,self.pvout)
+                        self.Lat_Lng_First_time = False
+            pass
         
         self.Latitude = user_lat
         self.Longitude = user_lng
 
+        
+        # # Check if the JSON file exists
+        if os.path.exists(json_file_path):
+            # Load panel_info from the JSON file
+            with open(json_file_path, "r", encoding='utf-8') as json_file:
+                jsondata = json.load(json_file)
+                
+            # Update panel_info with the loaded data
+            jsondata["latitude"] = self.Latitude
+            jsondata["longitude"] = self.Longitude
+            
+            with open(json_file_path, "w", encoding='utf-8') as json_file:
+                json.dump(jsondata, json_file, indent=2)
+
+       
         self.pvout, self.province = self.get_pvout(self.Latitude,self.Longitude)
         if self.pvout:
             self.province_label.config(text=f"province: {self.province}")
@@ -869,7 +921,7 @@ class SolarPlanelEstimationApp:
 
         
 
-    def new_panel_btn(self):
+    def save_panel_btn(self):
         self.already_draw_panel = 0
         self.update_panel_setting(self.pv_active)
         self.panel_permanent_sets.append(self.pv_active.copy())
@@ -878,6 +930,8 @@ class SolarPlanelEstimationApp:
         self.new_panel_button["state"] = tk.DISABLED
         self.calculate_panel_button["state"] = tk.DISABLED
         self.clear_panel_button["state"] = tk.DISABLED
+        self.cal_shadow_button["state"] = tk.NORMAL
+        self.hide_shadow_button["state"] = tk.DISABLED
         self.update_listbox()
 
 
@@ -925,6 +979,7 @@ class SolarPlanelEstimationApp:
         self.clear_panel_button["state"] = tk.DISABLED
         self.keepout_button["state"] = tk.DISABLED
         self.cal_shadow_button["state"] = tk.DISABLED
+        self.hide_shadow_button["state"] = tk.DISABLED
         self.tree_var.set(0)
         self.tree_checkbox["state"] = tk.DISABLED
         self.arrays_listbox.delete(0, tk.END)
@@ -1038,6 +1093,7 @@ class SolarPlanelEstimationApp:
                     self.tree_permanent_sets.append((x,y,h))
                     self.tree_points = []
                     self.clear_trees_button["state"] = tk.NORMAL
+                    self.cal_shadow_button["state"] = tk.NORMAL
                 else:
                     self.tree_points = []
 
@@ -1180,6 +1236,11 @@ class SolarPlanelEstimationApp:
             # Display the region of interest at the bottom right corner
             self.canvas.create_image(width, height, anchor=tk.SE, image=self.triple_roi_tk_image)
 
+            if len(self.points) == 1:
+                x, y = self.points[0]
+                self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="purple")
+
+            return
         
         # Draw prohibited areas
         for area in self.prohibited_points:
@@ -1253,12 +1314,9 @@ class SolarPlanelEstimationApp:
             x, y = area
             self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="yellow")
 
-        # draw reference points
-        if not self.reference_points:
-            if len(self.points) == 1:
-                x, y = self.points[0]
-                self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="purple")
+        
 
+        # draw reference points
         for point in self.reference_points:
             x, y = point
             self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="purple")
