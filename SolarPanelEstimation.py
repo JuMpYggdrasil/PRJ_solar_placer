@@ -1226,7 +1226,7 @@ class SolarPlanelEstimationApp:
         total_panel_kWp += self.pv_active.kWp
         tilt_ratio = self.tilt_calcutation(self.pv_active.tilt_angle)
         angle = min(self.pv_active.azimuth_angle, 90 - self.pv_active.azimuth_angle)
-        PVSYST_ratio = 0.87
+        PVSYST_ratio = 0.9
         try:
             kWp_to_kWh = float(self.pvout_entry.get()) # per year
         except:
