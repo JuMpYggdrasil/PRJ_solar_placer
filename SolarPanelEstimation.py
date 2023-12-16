@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 import calendar
 import json
 import os
+import io
 import copy
 from plot_solar import plot_solar_analemma
 
@@ -411,6 +412,12 @@ class SolarPlanelEstimationApp:
         self.distance_label = ttk.Label(frame11, text="Distance: ")
         self.distance_label.pack(side=tk.LEFT)
 
+        # Checkbox for prohibiting points
+        self.zoom_var = tk.IntVar()
+        self.zoom_checkbox = ttk.Checkbutton(frame11, text="zoom", variable=self.zoom_var, command=self.zoom_cb, state=tk.NORMAL)
+        self.zoom_checkbox.pack(side=tk.LEFT)
+        self.zoom_var.set(False)
+
         # Zoom factor
         self.zoom_factor = 1.0
 
@@ -770,6 +777,9 @@ class SolarPlanelEstimationApp:
         self.update_panel_setting(self.pv_active)
         self.update_canvas()
 
+    def zoom_cb(self):
+        pass
+
 
     def update_lat_lng(self):
         lat_str = self.lat_entry.get()
@@ -953,7 +963,8 @@ class SolarPlanelEstimationApp:
         self.new_panel_button["state"] = tk.DISABLED
         self.clear_panel_button["state"] = tk.DISABLED
 
-        self.cal_shadow_button["state"] = tk.DISABLED
+        if not self.panel_permanent_sets:
+            self.cal_shadow_button["state"] = tk.DISABLED
         self.tree_var.set(0)
         self.tree_checkbox["state"] = tk.DISABLED
 
@@ -1165,7 +1176,8 @@ class SolarPlanelEstimationApp:
                 self.canvas.create_line(self.points[0][0], self.points[0][1], x, y, fill="maroon1")
             return
 
-
+        if self.zoom_var.get() == True:
+            self.display_zoom(x, y)
 
         if self.tree_var.get() == 1:
             self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="lawn green", outline="", width=1)
@@ -1190,6 +1202,45 @@ class SolarPlanelEstimationApp:
             self.canvas.create_line(self.points[-1][0], self.points[-1][1], x, y, fill="orange")
             self.canvas.create_line(self.points[0][0], self.points[0][1], x, y, fill="orange")
 
+        
+
+    def display_zoom(self, x, y):
+        if self.original_image is None:
+            return
+        
+        # print(x,y)
+        
+
+        # Resize the image based on the zoom factor
+        width = int(self.original_image.width * self.zoom_factor)
+        height = int(self.original_image.height * self.zoom_factor)
+        resized_image = self.original_image.resize((width, height), Image.Resampling.LANCZOS)
+
+        # Define the region of interest (ROI) "Expected"
+        roi_distance = 100
+        if any([x<roi_distance,y<roi_distance,x>width-roi_distance,y>height-roi_distance]):
+            roi_width = int(min(x*2,(width-x)*2,roi_distance))
+            roi_height = int(min(y*2,(height-y)*2,roi_distance))
+        else:
+            roi_width = roi_distance
+            roi_height = roi_distance
+
+        roi_left = x-roi_width
+        roi_top = y-roi_height
+        roi_right = x+roi_width
+        roi_bottom = y+roi_height
+
+
+        try:
+            # Extract the region of interest from the resized image
+            roi_image = resized_image.crop((roi_left, roi_top, roi_right, roi_bottom))
+            zoom_roi_image = roi_image.resize((roi_width * 5, roi_height * 5), Image.Resampling.LANCZOS)
+            self.triple_roi_tk_image = ImageTk.PhotoImage(zoom_roi_image)
+
+            self.canvas.create_image(int(x+roi_width*5/2), int(y+roi_height*5/2), anchor=tk.SE, image=self.triple_roi_tk_image)
+        except:
+            pass
+
 
     def on_mousewheel(self, event):
         # Update the zoom factor based on the mouse wheel movement
@@ -1208,7 +1259,7 @@ class SolarPlanelEstimationApp:
         
     
         # Define the region of interest (ROI)
-        roi_width = 200
+        roi_width = 300
         roi_height = 150
 
         # Resize the image based on the zoom factor
@@ -1237,6 +1288,9 @@ class SolarPlanelEstimationApp:
                 self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="purple")
 
             return
+        
+
+
         
         # Draw prohibited areas
         for area in self.prohibited_points:
