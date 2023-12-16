@@ -23,11 +23,7 @@ jsondata = None
 # Define panel_info as a global variable
 # Each entry contains (power, width, height) information for different solar panels
 panel_info = {
-    "Jinko 550W": (550, 2.278, 1.134),  # Default JKM530-550M-72HL4
-    "Trina 300W": (300, 1.956, 0.992),
-    "Jinko 350W": (350, 1.956, 0.992),
-    "Jinko 500W": (500, 1.956, 1.310),
-    "Jinko 600W": (600, 2.465, 1.134)
+    "Jinko 545W": (545, 2.274, 1.134,"JKM-550M-72HL4")  # Default
 }
 
 json_file_path = "parameter.json"
@@ -230,7 +226,7 @@ class SolarArray:
         self.vertical_panel_count = num_rectangles_vertical
         self.intersect_keepout_count = intersection_count
         
-        panel_power,panel_width,panel_height = self.panel_type
+        panel_power,panel_width,panel_height,panel_model = self.panel_type
         self.kWp = panel_power * self.total_panel_count / 1000
 
         return
@@ -877,7 +873,7 @@ class SolarPlanelEstimationApp:
         solar_array.panel_rotation_tick = self.panel_rotate_var.get()
         solar_array.walk_gap_rotation_tick = self.walk_gap_rotate_var.get()
 
-        panel_power,panel_width,panel_height = panel_type
+        panel_power,panel_width,panel_height,panel_model = panel_type
 
         # Fixed size for small rectangles
         if solar_array.panel_rotation_tick==1:
