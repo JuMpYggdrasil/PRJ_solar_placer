@@ -6,7 +6,7 @@ from tkinter import ttk
 from tkinter import filedialog
 from tkinter import simpledialog
 from ttkthemes import ThemedTk
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageGrab
 import math
 import datetime
 import pytz
@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import calendar
 import json
 import os
-import io
+# import io
 import copy
 from plot_solar import plot_solar_analemma
 
@@ -26,20 +26,6 @@ jsondata = None
 panel_info = {
     "Jinko 545W": (545, 2.274, 1.134,"JKM-550M-72HL4")  # Default
 }
-
-json_file_path = "parameter.json"
-
-# Check if the JSON file exists
-if os.path.exists(json_file_path):
-    # Load panel_info from the JSON file
-    with open(json_file_path, "r", encoding='utf-8') as json_file:
-        jsondata = json.load(json_file)
-        loaded_panel_info = jsondata["panel_info"]
-
-        
-    # Update panel_info with the loaded data
-    panel_info.update(loaded_panel_info)
-
 
 
 class SolarArray:
@@ -67,6 +53,20 @@ class SolarArray:
         # Save the initial state for later reset
         self._initial_state = (panel_points, 0, 0, 0, 0, 0, 0, [], 0, 0, 0, 0, 0, None, None)
 
+        self.json_file_path = "parameter.json"
+        self.load_panel_info_from_json()
+
+    def load_panel_info_from_json(self, json_file_path="parameter.json"):
+        """Load panel information from a JSON file."""
+        global jsondata, panel_info
+
+        if os.path.exists(json_file_path):
+            with open(json_file_path, "r", encoding='utf-8') as json_file:
+                jsondata = json.load(json_file)
+                loaded_panel_info = jsondata.get("panel_info", {})
+
+            # Update panel_info with the loaded data
+            panel_info.update(loaded_panel_info)
     
     def calculate_panel(self, canvas, keepout_set):
         if not self.panel_type:
@@ -281,11 +281,13 @@ class SolarPlanelEstimationApp:
         self.Longitude = 100.50257304756634
         self.Lat_Lng_First_time = True
 
+        self.json_file_path = "parameter.json"
+
         # try:
         # Check if the JSON file exists
-        if os.path.exists(json_file_path):
+        if os.path.exists(self.json_file_path):
             # Load panel_info from the JSON file
-            with open(json_file_path, "r", encoding='utf-8') as json_file:
+            with open(self.json_file_path, "r", encoding='utf-8') as json_file:
                 jsondata = json.load(json_file)
                 lat_info = jsondata["latitude"]
                 lng_info = jsondata["longitude"]
@@ -301,6 +303,7 @@ class SolarPlanelEstimationApp:
         self.kWh_total = 0
 
         self.original_image = None
+        self.zoom_bg_image = None
         
         ### Initialize list ###
         self.distance_labels = []
@@ -323,6 +326,8 @@ class SolarPlanelEstimationApp:
         self.already_draw_panel = 0
         self.already_draw_shadow = 0
 
+        self.temporary_image = None
+        self.temporary_coordinate = (0,0)
         
 
         # Create Canvas
@@ -778,7 +783,33 @@ class SolarPlanelEstimationApp:
         self.update_canvas()
 
     def zoom_cb(self):
-        pass
+        def capture(widget):
+            # Resize the image based on the zoom factor
+            width = int(self.original_image.width * self.zoom_factor)
+            height = int(self.original_image.height * self.zoom_factor)
+            im = self.original_image.resize((width, height), Image.Resampling.LANCZOS)
+
+
+            # widget.update()
+            # x0 = widget.winfo_rootx()
+            # y0 = widget.winfo_rooty()
+            # x1 = x0 + widget.winfo_width()
+            # y1 = y0 + widget.winfo_height()
+            
+            # im = ImageGrab.grab((x0, y0, x1, y1))
+            
+            return im
+            # im.save('mypic.png') # Can also say im.show() to display it
+            # im.show()
+        
+        self.zoom_bg_image = capture(self.canvas)
+        # self.zoom_bg_image = self.get_image()
+
+    def get_image(self):
+        # Get the current state of the canvas as a PhotoImage
+        image = tk.PhotoImage(width=self.canvas.winfo_reqwidth(), height=self.canvas.winfo_reqheight())
+        self.canvas.postscript(file=image, colormode="color")
+        return image
 
 
     def update_lat_lng(self):
@@ -834,16 +865,16 @@ class SolarPlanelEstimationApp:
 
         
         # # Check if the JSON file exists
-        if os.path.exists(json_file_path):
+        if os.path.exists(self.json_file_path):
             # Load panel_info from the JSON file
-            with open(json_file_path, "r", encoding='utf-8') as json_file:
+            with open(self.json_file_path, "r", encoding='utf-8') as json_file:
                 jsondata = json.load(json_file)
                 
             # Update panel_info with the loaded data
             jsondata["latitude"] = self.Latitude
             jsondata["longitude"] = self.Longitude
             
-            with open(json_file_path, "w", encoding='utf-8') as json_file:
+            with open(self.json_file_path, "w", encoding='utf-8') as json_file:
                 json.dump(jsondata, json_file, indent=2)
 
        
@@ -1023,6 +1054,8 @@ class SolarPlanelEstimationApp:
         self.update_canvas()
 
     def on_canvas_enter(self,event):
+        # self.temporary_image = self.get_image()
+        # self.zoom_bg_image = self.get_image()
         self.update_panel_setting(self.pv_active)
         self.update_canvas()
 
@@ -1163,9 +1196,14 @@ class SolarPlanelEstimationApp:
         self.update_canvas()
 
 
+
+
     def on_canvas_motion(self, event):
         # Code to execute when the mouse moves over the canvas
         x, y = event.x, event.y
+
+
+
 
         self.update_canvas()
         # do not update_panel_setting() coz lag GUI
@@ -1205,22 +1243,22 @@ class SolarPlanelEstimationApp:
         
 
     def display_zoom(self, x, y):
-        if self.original_image is None:
+        if self.zoom_bg_image is None:
             return
         
         # print(x,y)
-        
 
-        # Resize the image based on the zoom factor
-        width = int(self.original_image.width * self.zoom_factor)
-        height = int(self.original_image.height * self.zoom_factor)
-        resized_image = self.original_image.resize((width, height), Image.Resampling.LANCZOS)
+        # # self.zoom_bg_image
+        width_ = self.zoom_bg_image.width
+        height_ = self.zoom_bg_image.height
+        
+        
 
         # Define the region of interest (ROI) "Expected"
         roi_distance = 100
-        if any([x<roi_distance,y<roi_distance,x>width-roi_distance,y>height-roi_distance]):
-            roi_width = int(min(x*2,(width-x)*2,roi_distance))
-            roi_height = int(min(y*2,(height-y)*2,roi_distance))
+        if any([x<roi_distance,y<roi_distance,x>width_-roi_distance,y>height_-roi_distance]):
+            roi_width = int(min(x*2,(width_-x)*2,roi_distance))
+            roi_height = int(min(y*2,(height_-y)*2,roi_distance))
         else:
             roi_width = roi_distance
             roi_height = roi_distance
@@ -1233,7 +1271,7 @@ class SolarPlanelEstimationApp:
 
         try:
             # Extract the region of interest from the resized image
-            roi_image = resized_image.crop((roi_left, roi_top, roi_right, roi_bottom))
+            roi_image = self.zoom_bg_image.crop((roi_left, roi_top, roi_right, roi_bottom))
             zoom_roi_image = roi_image.resize((roi_width * 5, roi_height * 5), Image.Resampling.LANCZOS)
             self.triple_roi_tk_image = ImageTk.PhotoImage(zoom_roi_image)
 
