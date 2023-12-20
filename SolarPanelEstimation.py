@@ -453,6 +453,8 @@ class SolarPlanelEstimationApp:
         self.panel_type_combobox = ttk.Combobox(frame12, textvariable=self.panel_type_var, values=panel_types)
         self.panel_type_combobox.pack(side=tk.LEFT)
 
+        self.panel_type_combobox.bind("<<ComboboxSelected>>", self.on_panel_type_cbx_selected)
+
         # Create a button to calculate rectangle properties based on the selected panel type
         # self.calculate_panel_button = ttk.Button(frame12, text="PV Panel", command=threading.Thread(target=self.calculate_panel_btn).start(), state=tk.DISABLED)
         self.calculate_panel_button = ttk.Button(frame12, text="PV Panel", command=self.calculate_panel_btn, state=tk.DISABLED)
@@ -746,6 +748,12 @@ class SolarPlanelEstimationApp:
         # print(f"Value changed to: {current_value}")
 
         
+        self.update_panel_setting(self.pv_active)
+        self.update_canvas()
+
+    def on_panel_type_cbx_selected(self, event):
+        selected_panel_type = self.panel_type_var.get()
+        # print("Selected Panel Type:", selected_panel_type)
         self.update_panel_setting(self.pv_active)
         self.update_canvas()
 
