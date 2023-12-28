@@ -277,6 +277,18 @@ class SolarPlanelEstimationApp:
                                 7.707856034,
                                 7.939395188,
                                 8.656304852]
+        self.monthly_percent_thailand = [8.732360594,
+                                8.321359862,
+                                9.466129905,
+                                9.541061671,
+                                8.783314195,
+                                7.957004153,
+                                7.821377658,
+                                7.810699881,
+                                7.263136007,
+                                7.707856034,
+                                7.939395188,
+                                8.656304852]
         self.tz = 'Asia/Bangkok'
         self.Latitude = 13.765733827940576
         self.Longitude = 100.50257304756634
@@ -895,8 +907,9 @@ class SolarPlanelEstimationApp:
                 self.pvout_entry.delete(0,tk.END)
                 self.pvout_entry.insert(0,self.pvout)
 
-        self.monthly_percent = self.get_monthly_irradiation(2023, self.Latitude, self.Longitude)
-        
+        monthly_weight = self.get_monthly_irradiation(2023, self.Latitude, self.Longitude)
+        self.monthly_percent = [(x + y)/2 for x, y in zip(monthly_weight, self.monthly_percent_thailand)]
+
 
 
 
