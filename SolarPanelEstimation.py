@@ -11,6 +11,7 @@ import math
 import datetime
 import pytz
 from pysolar.solar import get_altitude, get_azimuth
+from pysolar.radiation import get_radiation_direct
 import matplotlib.pyplot as plt
 import calendar
 import json
@@ -893,6 +894,8 @@ class SolarPlanelEstimationApp:
             if self.pvout_en_var.get() == 1:
                 self.pvout_entry.delete(0,tk.END)
                 self.pvout_entry.insert(0,self.pvout)
+
+        self.monthly_percent = self.get_monthly_irradiation(2023, self.Latitude, self.Longitude)
         
 
 
@@ -1732,7 +1735,35 @@ class SolarPlanelEstimationApp:
                 nearest_location = location
 
         return nearest_location
+    # Function to calculate daily irradiation
+    def get_daily_irradiation(self, year, month, day, latitude, longitude):
+        tz_info = pytz.timezone(self.tz)
+        date = datetime.datetime(year, month, day, 12, 0, 0, tzinfo=tz_info)
+        altitude_deg = get_altitude(latitude, longitude, date)
+        if altitude_deg <= 0:  # Sun is not above the horizon
+            return 0
+        irradiation = get_radiation_direct(date, altitude_deg)
+        return irradiation
     
+    def get_monthly_irradiation(self, year, latitude, longitude):
+        monthly_irradiation = []
+        for month in range(1, 13):
+            daily_irradiations = []
+            for day in range(1, 32):
+                try:
+                    irradiation = self.get_daily_irradiation(year, month, day, latitude, longitude)
+                    daily_irradiations.append(irradiation)
+                except ValueError:
+                    continue
+            monthly_avg = np.mean(daily_irradiations)
+            monthly_irradiation.append(monthly_avg)
+
+        # max_irradiation = max(monthly_irradiation)
+        sum_irradiation = sum(monthly_irradiation)
+        monthly_irradiation_percentage = [(x / sum_irradiation)*100 for x in monthly_irradiation]
+        # print(monthly_irradiation_percentage)
+
+        return monthly_irradiation_percentage
 
 def main():
     root = ThemedTk(theme="equilux")
