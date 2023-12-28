@@ -318,6 +318,7 @@ class SolarPlanelEstimationApp:
         self.original_image = None
         self.zoom_bg_image = None
         
+        
         ### Initialize list ###
         self.distance_labels = []
 
@@ -335,6 +336,7 @@ class SolarPlanelEstimationApp:
         self.tree_permanent_sets = []
 
 
+
         # Initial Variable & Flag
         self.already_draw_panel = 0
         self.already_draw_shadow = 0
@@ -346,6 +348,9 @@ class SolarPlanelEstimationApp:
         # Create Canvas
         self.canvas = tk.Canvas(self.master, bg='gray25', width=0, height=0)
         self.canvas.pack()
+
+        # self.pointer = None
+        # self.pointer = self.canvas.create_oval(0 , 0 , 6, 6, fill="red", outline="red", width=2)
         
         
         # Create a notebook (tabs container)
@@ -1080,8 +1085,11 @@ class SolarPlanelEstimationApp:
     def on_canvas_enter(self,event):
         # self.temporary_image = self.get_image()
         # self.zoom_bg_image = self.get_image()
+        # image = self.get_image()
+        # self.drawn_objects = image
         self.update_panel_setting(self.pv_active)
         self.update_canvas()
+        
 
     def on_canvas_leave(self,event):
         self.update_panel_setting(self.pv_active)
@@ -1226,10 +1234,8 @@ class SolarPlanelEstimationApp:
         # Code to execute when the mouse moves over the canvas
         x, y = event.x, event.y
 
-
-
-
         self.update_canvas()
+        
         # do not update_panel_setting() coz lag GUI
     
         if not self.reference_points:
@@ -1609,8 +1615,6 @@ class SolarPlanelEstimationApp:
         pixel_distance = ((self.points[-2][0] - self.points[-1][0]) ** 2 + (self.points[-2][1] - self.points[-1][1]) ** 2) ** 0.5
         distance_in_meters = pixel_distance * self.scale_factor
         return distance_in_meters
-
-
     
     
     def tilt_calcutation(self,angle):
