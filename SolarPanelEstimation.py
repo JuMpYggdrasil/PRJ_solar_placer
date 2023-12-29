@@ -256,10 +256,16 @@ class SolarPlanelEstimationApp:
         self.master = master
         width = self.master.winfo_screenwidth()
         height = self.master.winfo_screenheight()
+
+        self.style = ttk.Style()
+        self.current_theme = self.style.theme_use()
+        # print("Current Theme:", current_theme)
+
         # Setting tkinter window size
         self.master.geometry("%dx%d" % (width, height))
         self.master.title("Solar Panel Estimation Tool")
-        self.master.configure(bg='gray27')
+        if self.current_theme == "equilux":
+            self.master.configure(bg='gray27')
 
         self.shadow_datetimes = ["2023/03/23 09:00:00","2023/03/23 13:00:00","2023/03/23 16:00:00",
                                  "2023/06/23 09:00:00","2023/06/23 13:00:00","2023/06/23 16:00:00",
@@ -296,20 +302,20 @@ class SolarPlanelEstimationApp:
 
         self.json_file_path = "parameter.json"
 
-        # try:
-        # Check if the JSON file exists
-        if os.path.exists(self.json_file_path):
-            # Load panel_info from the JSON file
-            with open(self.json_file_path, "r", encoding='utf-8') as json_file:
-                jsondata = json.load(json_file)
-                lat_info = jsondata["latitude"]
-                lng_info = jsondata["longitude"]
-                
-            # Update panel_info with the loaded data
-            self.Latitude = lat_info
-            self.Longitude = lng_info
-        # except:
-        #     pass
+        try:
+            # Check if the JSON file exists
+            if os.path.exists(self.json_file_path):
+                # Load panel_info from the JSON file
+                with open(self.json_file_path, "r", encoding='utf-8') as json_file:
+                    jsondata = json.load(json_file)
+                    lat_info = jsondata["latitude"]
+                    lng_info = jsondata["longitude"]
+                    
+                # Update panel_info with the loaded data
+                self.Latitude = lat_info
+                self.Longitude = lng_info
+        except:
+            pass
         
         
 
@@ -346,7 +352,9 @@ class SolarPlanelEstimationApp:
         
 
         # Create Canvas
-        self.canvas = tk.Canvas(self.master, bg='gray25', width=0, height=0)
+        self.canvas = tk.Canvas(self.master, width=0, height=0)
+        if self.current_theme == "equilux":
+            self.canvas.config(bg='gray25')
         self.canvas.pack()
 
         # self.pointer = None
@@ -506,7 +514,9 @@ class SolarPlanelEstimationApp:
 
         frame40 = ttk.Frame(superframe10_right)
         frame40.pack(side=tk.TOP,expand=True,fill=tk.BOTH)
-        self.arrays_listbox = tk.Listbox(frame40, width=40, bg='gray25', foreground="gray70")
+        self.arrays_listbox = tk.Listbox(frame40, width=40, foreground="gray70")
+        if self.current_theme == "equilux":
+            self.arrays_listbox.config(bg='gray25')
         self.arrays_listbox.pack(side=tk.LEFT)
 
         self.arrays_listbox.bind("<Double-Button-1>", self.on_double_click_arrays_listbox)
@@ -1777,14 +1787,17 @@ class SolarPlanelEstimationApp:
 
         # max_irradiation = max(monthly_irradiation)
         sum_irradiation = sum(monthly_irradiation)
-        monthly_irradiation_percentage = [(x / sum_irradiation)*100 for x in monthly_irradiation]
+        try:
+            monthly_irradiation_percentage = [(x / sum_irradiation)*100 for x in monthly_irradiation]
+        except:
+            return self.monthly_percent_thailand
         # print(monthly_irradiation_percentage)
 
         return monthly_irradiation_percentage
 
 def main():
-    root = ThemedTk(theme="equilux")
-    # root = tk.Tk()
+    # root = ThemedTk(theme="equilux")
+    root = tk.Tk()
     app = SolarPlanelEstimationApp(root)
     root.mainloop()
 
