@@ -372,6 +372,7 @@ class SolarPlanelEstimationApp:
         self.reference_points = []
         self.prohibited_points = []
         self.tree_points = []
+        self.shadow_points = []
 
         self.panel_permanent_sets = []
         self.prohibited_permanent_sets = []
@@ -1433,12 +1434,40 @@ class SolarPlanelEstimationApp:
 
         # draw panel shadow
         if self.already_draw_panel == 1:
+            self.shadow_points = []
             for shadow_datetime in self.shadow_datetimes:
                 self.calculate_panel_shadow(self.canvas, shadow_datetime, self.pv_active)
+                
+            if len(self.shadow_points) > 2:
+                # Convert points to a numpy array suitable for OpenCV
+                points_array = np.array(self.shadow_points, dtype=np.int32)
+
+                # Calculate the convex hull
+                hull = cv2.convexHull(points_array)
+
+                # Convert hull points to a format suitable for create_polygon
+                # OpenCV returns a list of points in a slightly different format, so we need to reshape it
+                hull_points = hull.reshape(-1, 2)
+                polygon_points = list(hull_points.flatten())
+                self.canvas.create_polygon(polygon_points, stipple="gray50")
 
         for panel_permanent_array in self.panel_permanent_sets:
+            self.shadow_points = []
             for shadow_datetime in self.shadow_datetimes:
                 self.calculate_panel_shadow(self.canvas, shadow_datetime, panel_permanent_array)
+
+            if len(self.shadow_points) > 2:
+                # Convert points to a numpy array suitable for OpenCV
+                points_array = np.array(self.shadow_points, dtype=np.int32)
+
+                # Calculate the convex hull
+                hull = cv2.convexHull(points_array)
+
+                # Convert hull points to a format suitable for create_polygon
+                # OpenCV returns a list of points in a slightly different format, so we need to reshape it
+                hull_points = hull.reshape(-1, 2)
+                polygon_points = list(hull_points.flatten())
+                self.canvas.create_polygon(polygon_points, stipple="gray50")
 
         
         
@@ -1580,17 +1609,23 @@ class SolarPlanelEstimationApp:
         # Draw shadow lines from each corner of the rectangle
         shadow_end_x1 = selected_points[-4][0] + shadow_direction_x
         shadow_end_y1 = selected_points[-4][1] + shadow_direction_y
+        self.shadow_points.append((shadow_end_x1,shadow_end_y1))
 
         shadow_end_x2 = selected_points[-3][0] + shadow_direction_x
         shadow_end_y2 = selected_points[-3][1] + shadow_direction_y
+        self.shadow_points.append((shadow_end_x2,shadow_end_y2))
 
         shadow_end_x3 = selected_points[-2][0] + shadow_direction_x
         shadow_end_y3 = selected_points[-2][1] + shadow_direction_y
+        self.shadow_points.append((shadow_end_x3,shadow_end_y3))
 
         shadow_end_x4 = selected_points[-1][0] + shadow_direction_x
         shadow_end_y4 = selected_points[-1][1] + shadow_direction_y
-        
+        self.shadow_points.append((shadow_end_x4,shadow_end_y4))
 
+        
+        
+        
         # Draw shadow lines from each corner to corresponding points on the ground
         # self.canvas.create_line(selected_points[-4][0], selected_points[-4][1], shadow_end_x1, shadow_end_y1, fill="black")
         # self.canvas.create_line(selected_points[-3][0], selected_points[-3][1], shadow_end_x2, shadow_end_y2, fill="black")
@@ -1598,7 +1633,7 @@ class SolarPlanelEstimationApp:
         # self.canvas.create_line(selected_points[-1][0], selected_points[-1][1], shadow_end_x4, shadow_end_y4, fill="black")
         
         # Draw the rotated rectangle on the canvas
-        canvas.create_polygon(shadow_end_x1, shadow_end_y1, shadow_end_x2, shadow_end_y2, shadow_end_x3, shadow_end_y3, shadow_end_x4, shadow_end_y4, fill=color, stipple=stipple)
+        # canvas.create_polygon(self.shadow_points, fill=color, stipple=stipple)
 
     
     def calculate_trees_shadow(self, date_input_str, color="black", stipple="gray50"):
