@@ -19,6 +19,7 @@ import os
 # import io
 import copy
 from plot_solar import plot_solar_analemma
+import threading
 
 jsondata = None
 
@@ -353,6 +354,8 @@ class SolarPlanelEstimationApp:
         except:
             pass
         
+
+        self.lock = threading.Lock()
         
 
         self.kWh_total = 0
@@ -1436,39 +1439,17 @@ class SolarPlanelEstimationApp:
         if self.already_draw_panel == 1:
             self.shadow_points = []
             for shadow_datetime in self.shadow_datetimes:
-                self.calculate_panel_shadow(self.canvas, shadow_datetime, self.pv_active)
-                
-            if len(self.shadow_points) > 2:
-                # Convert points to a numpy array suitable for OpenCV
-                points_array = np.array(self.shadow_points, dtype=np.int32)
+                self.calculate_panel_shadow(shadow_datetime, self.pv_active)
 
-                # Calculate the convex hull
-                hull = cv2.convexHull(points_array)
-
-                # Convert hull points to a format suitable for create_polygon
-                # OpenCV returns a list of points in a slightly different format, so we need to reshape it
-                hull_points = hull.reshape(-1, 2)
-                polygon_points = list(hull_points.flatten())
-                self.canvas.create_polygon(polygon_points, stipple="gray50")
+            self.draw_panel_shadow(self.canvas, self.shadow_points)
+        
 
         for panel_permanent_array in self.panel_permanent_sets:
             self.shadow_points = []
             for shadow_datetime in self.shadow_datetimes:
-                self.calculate_panel_shadow(self.canvas, shadow_datetime, panel_permanent_array)
+                self.calculate_panel_shadow(shadow_datetime, panel_permanent_array)
 
-            if len(self.shadow_points) > 2:
-                # Convert points to a numpy array suitable for OpenCV
-                points_array = np.array(self.shadow_points, dtype=np.int32)
-
-                # Calculate the convex hull
-                hull = cv2.convexHull(points_array)
-
-                # Convert hull points to a format suitable for create_polygon
-                # OpenCV returns a list of points in a slightly different format, so we need to reshape it
-                hull_points = hull.reshape(-1, 2)
-                polygon_points = list(hull_points.flatten())
-                self.canvas.create_polygon(polygon_points, stipple="gray50")
-
+            self.draw_panel_shadow(self.canvas, self.shadow_points)
         
         
         # draw panel
@@ -1567,7 +1548,7 @@ class SolarPlanelEstimationApp:
             self.canvas.create_line(points[0][0], points[0][1], points[-1][0], points[-1][1], fill="orange")
 
 
-    def calculate_panel_shadow(self, canvas, date_input_str, solar_array, color="black", stipple="gray50"):
+    def calculate_panel_shadow(self, date_input_str, solar_array):
         selected_points = solar_array.panel_points
         if self.already_draw_shadow == 0:
             return
@@ -1577,10 +1558,6 @@ class SolarPlanelEstimationApp:
         
         self.update_lat_lng()
         local_datetime = datetime.datetime.strptime(date_input_str, "%Y/%m/%d %H:%M:%S")
-        if local_datetime.month <7:
-            color="gray2"
-        else:
-            color="gray4"
         pytz.timezone(self.tz)
         
         # Convert input to appropriate types
@@ -1622,19 +1599,21 @@ class SolarPlanelEstimationApp:
         shadow_end_x4 = selected_points[-1][0] + shadow_direction_x
         shadow_end_y4 = selected_points[-1][1] + shadow_direction_y
         self.shadow_points.append((shadow_end_x4,shadow_end_y4))
+    
 
-        
-        
-        
-        # Draw shadow lines from each corner to corresponding points on the ground
-        # self.canvas.create_line(selected_points[-4][0], selected_points[-4][1], shadow_end_x1, shadow_end_y1, fill="black")
-        # self.canvas.create_line(selected_points[-3][0], selected_points[-3][1], shadow_end_x2, shadow_end_y2, fill="black")
-        # self.canvas.create_line(selected_points[-2][0], selected_points[-2][1], shadow_end_x3, shadow_end_y3, fill="black")
-        # self.canvas.create_line(selected_points[-1][0], selected_points[-1][1], shadow_end_x4, shadow_end_y4, fill="black")
-        
-        # Draw the rotated rectangle on the canvas
-        # canvas.create_polygon(self.shadow_points, fill=color, stipple=stipple)
+    def draw_panel_shadow(self, canvas, shadow_points, color="black", stipple="gray50"):
+        if len(shadow_points) > 2:
+            # Convert points to a numpy array suitable for OpenCV
+            points_array = np.array(shadow_points, dtype=np.int32)
 
+            # Calculate the convex hull
+            hull = cv2.convexHull(points_array)
+
+            # Convert hull points to a format suitable for create_polygon
+            # OpenCV returns a list of points in a slightly different format, so we need to reshape it
+            hull_points = hull.reshape(-1, 2)
+            polygon_points = list(hull_points.flatten())
+            canvas.create_polygon(polygon_points, stipple=stipple)
     
     def calculate_trees_shadow(self, date_input_str, color="black", stipple="gray50"):
         if self.already_draw_shadow == 0:
