@@ -1486,7 +1486,8 @@ class SolarPlanelEstimationApp:
             kWp_to_kWh = 0
         self.kWh_total = total_panel_kWp * kWp_to_kWh * PVSYST_ratio * tilt_ratio
         try:
-            self.total_rectangles_label.config(text=f"Azimuth angle(deg): {angle:,.2f} , kWp {total_panel_detail_str} = {total_panel_kWp:,.2f} kW, Anual Energy {self.kWh_total:,.2f} kWh")
+            num_rectangles_text = str(self.pv_active.horizontal_panel_count) + " x " + str(self.pv_active.vertical_panel_count) + "panels"
+            self.total_rectangles_label.config(text=f"Azimuth angle(deg): {angle:,.2f} , {num_rectangles_text} , kWp {total_panel_detail_str} = {total_panel_kWp:,.2f} kW, Anual Energy {self.kWh_total:,.2f} kWh")
         except:
             pass
         
