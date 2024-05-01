@@ -443,7 +443,7 @@ class SolarPlanelEstimationApp:
         # Entry widget for big_gap_height
         ttk.Label(frame10, text="Walk Gap (m):").pack(side=tk.LEFT)
         self.walk_gap_entry = ttk.Entry(frame10)
-        self.walk_gap_entry.insert(0, "0.6")  # Set default value
+        self.walk_gap_entry.insert(0, "0.7")  # Set default value
         self.walk_gap_entry.pack(side=tk.LEFT)
 
         # Entry widget for big_gap_height
