@@ -26,9 +26,8 @@ jsondata = None
 # Define panel_info as a global variable
 # Each entry contains (power, width, height) information for different solar panels
 panel_info = {
-    "Jinko 545W": (545, 2.274, 1.134,"JKM-550M-72HL4")  # Default
+    "Jinko 615W": (615, 2.38, 1.134,"JKM-615N-66HL4M-BDV")  # Default
 }
-
 
 class SolarArray:
     def __init__(self, panel_points):
