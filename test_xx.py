@@ -28,16 +28,12 @@ except cv2.error as e:
     print(f"Error during upsampling: {e}")
     raise
 
-# Resize the enhanced image to the original image's resolution
-original_dimensions = (image.shape[1], image.shape[0])  # (width, height)
-resized_result = cv2.resize(result, original_dimensions, interpolation=cv2.INTER_CUBIC)
-
-# Path to save the enhanced and resized image
+# Path to save the enhanced image
 output_path = 'path_to_save_enhanced_image.jpg'
-cv2.imwrite(output_path, resized_result)
+cv2.imwrite(output_path, result)
 
 # Display the images (optional)
 cv2.imshow('Original Image', image)
-cv2.imshow('Enhanced and Resized Image', resized_result)
+cv2.imshow('Enhanced Image', result)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
