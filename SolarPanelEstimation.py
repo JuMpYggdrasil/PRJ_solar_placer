@@ -26,7 +26,8 @@ jsondata = None
 # Define panel_info as a global variable
 # Each entry contains (power, width, height) information for different solar panels
 panel_info = {
-    "Jinko 615W": (615, 2.38, 1.134,"JKM-615N-66HL4M-BDV")  # Default
+    "Jinko 615W": (615, 2.38, 1.134,"JKM-615N-66HL4M-BDV"),  # Default
+    "Jinko 630W": (630, 2.465, 1.134,"JKM-630N-74HL4-BDV")
 }
 
 class SolarArray:
@@ -388,6 +389,8 @@ class SolarPlanelEstimationApp:
 
         self.temporary_image = None
         self.temporary_coordinate = (0,0)
+        
+        self.reference_points_zoom_in = 3
 
 
         
@@ -1193,10 +1196,11 @@ class SolarPlanelEstimationApp:
             if len(self.points) >= 2:
                 self.reference_points = self.points
                 self.points = []
+                # self.reference_points_zoom_in = 3
                 
                 pixel_distance = ((self.reference_points[-2][0] - self.reference_points[-1][0]) ** 2 + (
                             self.reference_points[-2][1] - self.reference_points[-1][1]) ** 2) ** 0.5
-                pixel_distance = pixel_distance/3
+                pixel_distance = pixel_distance/self.reference_points_zoom_in
                 d_val = simpledialog.askfloat("Scale Factor", "Enter the scale factor (pixels to meters):")
                 if d_val is not None:
                     self.scale_factor = d_val / pixel_distance
@@ -1206,7 +1210,7 @@ class SolarPlanelEstimationApp:
                     self.canvas.unbind("<MouseWheel>")
                     width = int(self.original_image.width * self.zoom_factor)
                     height = int(self.original_image.height * self.zoom_factor)
-                    self.reference_points = [(int((x+2*width)/3), int((y+2*height)/3)) for x, y in self.reference_points]
+                    self.reference_points = [(int((x+2*width)/self.reference_points_zoom_in), int((y+2*height)/self.reference_points_zoom_in)) for x, y in self.reference_points]
                 else:
                     # If the user cancels, clear the points and canvas and return
                     self.clear_all_canvas_btn()
@@ -1398,9 +1402,15 @@ class SolarPlanelEstimationApp:
 
         if not self.reference_points:
             # Extract the region of interest from the resized image
-            roi_image = resized_image.crop((width - roi_width, height - roi_height, width, height))
-            triple_roi_image = roi_image.resize((roi_width * 3, roi_height * 3), Image.Resampling.LANCZOS)
-            self.triple_roi_tk_image = ImageTk.PhotoImage(triple_roi_image)
+            bottom_left_roi_image = resized_image.crop((0, height - roi_height, roi_width, height))
+            bottom_right_roi_image = resized_image.crop((width - roi_width, height - roi_height, width, height))
+            top_left_roi_image = resized_image.crop((0, 0, roi_width, roi_height))
+            top_right_roi_image = resized_image.crop((width - roi_width, 0, width, roi_height))
+            roi_image = top_left_roi_image # change to selected corner
+            zoom_in_roi_image = roi_image.resize((roi_width * self.reference_points_zoom_in, roi_height * self.reference_points_zoom_in), Image.Resampling.LANCZOS)
+            self.triple_roi_tk_image = ImageTk.PhotoImage(zoom_in_roi_image)
+            
+            
 
         # Update the canvas with the resized image
         self.canvas.config(width=width, height=height)
