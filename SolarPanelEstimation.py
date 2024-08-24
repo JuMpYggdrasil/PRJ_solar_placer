@@ -1406,7 +1406,7 @@ class SolarPlanelEstimationApp:
             bottom_right_roi_image = resized_image.crop((width - roi_width, height - roi_height, width, height))
             top_left_roi_image = resized_image.crop((0, 0, roi_width, roi_height))
             top_right_roi_image = resized_image.crop((width - roi_width, 0, width, roi_height))
-            roi_image = top_left_roi_image # change to selected corner
+            roi_image = bottom_right_roi_image # change to selected corner
             zoom_in_roi_image = roi_image.resize((roi_width * self.reference_points_zoom_in, roi_height * self.reference_points_zoom_in), Image.Resampling.LANCZOS)
             self.triple_roi_tk_image = ImageTk.PhotoImage(zoom_in_roi_image)
             
