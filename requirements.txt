@@ -1,0 +1,8 @@
+opencv-python
+numpy
+pillow
+pytz
+pysolar
+matplotlib
+ttkthemes
+pvlib

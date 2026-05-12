@@ -5,18 +5,18 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
 from tkinter import simpledialog
-from ttkthemes import ThemedTk
-from PIL import Image, ImageTk, ImageGrab
+from PIL import Image, ImageTk
 import math
 import datetime
 import pytz
+import pysolar
+pysolar.use_math()
 from pysolar.solar import get_altitude, get_azimuth
 from pysolar.radiation import get_radiation_direct
 import matplotlib.pyplot as plt
 import calendar
 import json
 import os
-# import io
 import copy
 from plot_solar import plot_solar_analemma
 import threading
@@ -44,7 +44,7 @@ class SolarArray:
         # GUI panel setting
         self.panel_type = []
         self.tilt_angle = 0
-        self.lavitation = 0
+        self.elevation = 0
         self.panel_rotation_tick = 0
         self.walk_gap_rotation_tick = 0
         self.setback_length = 0
@@ -284,11 +284,11 @@ class SolarArray:
     def reset_to_initial_state(self):
         (self.panel_points, self.total_panel_count, self.horizontal_panel_count,
          self.vertical_panel_count, self.intersect_keepout_count, self.kWp,
-         self.azimuth_angle, self.panel_type, self.tilt_angle, self.lavitation,
+         self.azimuth_angle, self.panel_type, self.tilt_angle, self.elevation,
          self.panel_rotation_tick, self.walk_gap_rotation_tick, self.setback_length,
          self.gap_size, self.small_rect_size) = self._initial_state
       
-class SolarPlanelEstimationApp:
+class SolarPanelEstimationApp:
     def __init__(self, master):
         self.master = master
         width = self.master.winfo_screenwidth()
@@ -355,7 +355,6 @@ class SolarPlanelEstimationApp:
             pass
         
 
-        self.lock = threading.Lock()
         
 
         self.kWh_total = 0
@@ -587,10 +586,10 @@ class SolarPlanelEstimationApp:
         self.lon_entry.insert(0, self.Longitude)  # Default value
         self.lon_entry.pack(side=tk.LEFT)
         
-        ttk.Label(frame20, text="lavitage from ground (m):").pack(side=tk.LEFT)
-        self.lavitage_entry = ttk.Entry(frame20)
-        self.lavitage_entry.insert(0, "0")  # Default value
-        self.lavitage_entry.pack(side=tk.LEFT)
+        ttk.Label(frame20, text="elevation from ground (m):").pack(side=tk.LEFT)
+        self.elevation_entry = ttk.Entry(frame20)
+        self.elevation_entry.insert(0, "0")  # Default value
+        self.elevation_entry.pack(side=tk.LEFT)
 
         ttk.Label(frame20, text="Tilt Angle (deg):").pack(side=tk.LEFT)
         self.tilt_angle_entry = ttk.Entry(frame20)
@@ -602,8 +601,8 @@ class SolarPlanelEstimationApp:
         self.lat_entry.bind("<Return>", self.entry_changed2)
         self.lon_entry.bind("<FocusOut>", self.entry_changed2)
         self.lon_entry.bind("<Return>", self.entry_changed2)
-        self.lavitage_entry.bind("<FocusOut>", self.entry_changed2)
-        self.lavitage_entry.bind("<Return>", self.entry_changed2)
+        self.elevation_entry.bind("<FocusOut>", self.entry_changed2)
+        self.elevation_entry.bind("<Return>", self.entry_changed2)
         self.tilt_angle_entry.bind("<FocusOut>", self.entry_changed2)
         self.tilt_angle_entry.bind("<Return>", self.entry_changed2)
 
@@ -617,8 +616,8 @@ class SolarPlanelEstimationApp:
         frame21 = ttk.Frame(tab2)
         frame21.pack(side=tk.TOP)
 
-        self.cal_shadow_button = ttk.Button(frame21, text="Calculate Shadow", command=self.calculate_shadows_btn, state=tk.DISABLED)
-        self.cal_shadow_button.pack(side=tk.LEFT)
+        self.calc_shadow_button = ttk.Button(frame21, text="Calculate Shadow", command=self.calculate_shadows_btn, state=tk.DISABLED)
+        self.calc_shadow_button.pack(side=tk.LEFT)
         self.hide_shadow_button = ttk.Button(frame21, text="Hide Shadow", command=self.hide_shadows_btn, state=tk.DISABLED)
         self.hide_shadow_button.pack(side=tk.LEFT)
         self.clear_trees_button = ttk.Button(frame21, text="Clear Trees", command=self.clear_trees_btn, state=tk.DISABLED)
@@ -723,8 +722,8 @@ class SolarPlanelEstimationApp:
         self.tilt_angle_entry.delete(0,tk.END)
         self.tilt_angle_entry.insert(0,solar_array.tilt_angle)
 
-        self.lavitage_entry.delete(0,tk.END)
-        self.lavitage_entry.insert(0,solar_array.lavitation)
+        self.elevation_entry.delete(0,tk.END)
+        self.elevation_entry.insert(0,solar_array.elevation)
 
 
     def on_tab_selected(self, event):
@@ -881,11 +880,7 @@ class SolarPlanelEstimationApp:
             # x1 = x0 + widget.winfo_width()
             # y1 = y0 + widget.winfo_height()
             
-            # im = ImageGrab.grab((x0, y0, x1, y1))
             
-            return im
-            # im.save('mypic.png') # Can also say im.show() to display it
-            # im.show()
         
         self.zoom_bg_image = capture(self.canvas)
         # self.zoom_bg_image = self.get_image()
@@ -979,7 +974,7 @@ class SolarPlanelEstimationApp:
 
     def calculate_panel_btn(self):
         self.already_draw_panel = 1
-        self.cal_shadow_button["state"] = tk.NORMAL
+        self.calc_shadow_button["state"] = tk.NORMAL
         self.tree_checkbox["state"] = tk.NORMAL
         self.new_panel_button["state"] = tk.NORMAL
         self.update_panel_setting(self.pv_active)
@@ -1039,10 +1034,10 @@ class SolarPlanelEstimationApp:
 
         try:
             solar_array.tilt_angle = float(self.tilt_angle_entry.get())
-            solar_array.lavitation = float(self.lavitage_entry.get())
+            solar_array.elevation = float(self.elevation_entry.get())
         except:
             solar_array.tilt_angle = 0
-            solar_array.lavitation = 0
+            solar_array.elevation = 0
 
         
 
@@ -1055,7 +1050,7 @@ class SolarPlanelEstimationApp:
         self.new_panel_button["state"] = tk.DISABLED
         self.calculate_panel_button["state"] = tk.DISABLED
         self.clear_panel_button["state"] = tk.DISABLED
-        self.cal_shadow_button["state"] = tk.NORMAL
+        self.calc_shadow_button["state"] = tk.NORMAL
         self.hide_shadow_button["state"] = tk.DISABLED
         self.update_listbox()
 
@@ -1083,7 +1078,7 @@ class SolarPlanelEstimationApp:
         self.clear_panel_button["state"] = tk.DISABLED
 
         if not self.panel_permanent_sets:
-            self.cal_shadow_button["state"] = tk.DISABLED
+            self.calc_shadow_button["state"] = tk.DISABLED
         self.tree_var.set(0)
         self.tree_checkbox["state"] = tk.DISABLED
 
@@ -1104,7 +1099,7 @@ class SolarPlanelEstimationApp:
         self.new_panel_button["state"] = tk.DISABLED
         self.clear_panel_button["state"] = tk.DISABLED
         self.keepout_button["state"] = tk.DISABLED
-        self.cal_shadow_button["state"] = tk.DISABLED
+        self.calc_shadow_button["state"] = tk.DISABLED
         self.hide_shadow_button["state"] = tk.DISABLED
         self.tree_var.set(0)
         self.tree_checkbox["state"] = tk.DISABLED
@@ -1120,7 +1115,7 @@ class SolarPlanelEstimationApp:
 
     def calculate_shadows_btn(self, color="black", stipple="gray50"):
         self.already_draw_shadow = 1
-        self.cal_shadow_button["state"] = tk.DISABLED
+        self.calc_shadow_button["state"] = tk.DISABLED
         self.hide_shadow_button["state"] = tk.NORMAL
         self.update_panel_setting(self.pv_active)
         self.update_canvas()
@@ -1129,7 +1124,7 @@ class SolarPlanelEstimationApp:
     def hide_shadows_btn(self):
         self.already_draw_shadow = 0
         self.hide_shadow_button["state"] = tk.DISABLED
-        self.cal_shadow_button["state"] = tk.NORMAL
+        self.calc_shadow_button["state"] = tk.NORMAL
         self.update_panel_setting(self.pv_active)
         self.update_canvas()
 
@@ -1227,7 +1222,7 @@ class SolarPlanelEstimationApp:
                     self.tree_permanent_sets.append((x,y,h))
                     self.tree_points = []
                     self.clear_trees_button["state"] = tk.NORMAL
-                    self.cal_shadow_button["state"] = tk.NORMAL
+                    self.calc_shadow_button["state"] = tk.NORMAL
                 else:
                     self.tree_points = []
 
@@ -1486,7 +1481,7 @@ class SolarPlanelEstimationApp:
         
         total_panel_detail_str += f"{self.pv_active.kWp} "
         total_panel_kWp += self.pv_active.kWp
-        tilt_ratio = self.tilt_calcutation(self.pv_active.tilt_angle)
+        tilt_ratio = self.tilt_calculation(self.pv_active.tilt_angle)
         angle = min(self.pv_active.azimuth_angle, 90 - self.pv_active.azimuth_angle)
         PVSYST_ratio = 0.9
         try:
@@ -1574,7 +1569,7 @@ class SolarPlanelEstimationApp:
         # -Convert local to UTC
         date = local_datetime.astimezone(pytz.utc)
         
-        lavitage_height = solar_array.lavitation
+        elevation_height = solar_array.elevation
 
         # Calculate solar position using pysolar
         solar_altitude = get_altitude(self.Latitude, self.Longitude, date)
@@ -1584,7 +1579,7 @@ class SolarPlanelEstimationApp:
         # Calculate shadow length
         phi = math.radians(solar_altitude)
         phi = phi % (2 * math.pi)
-        shadow_length = (lavitage_height / math.tan(phi)) / self.scale_factor
+        shadow_length = (elevation_height / math.tan(phi)) / self.scale_factor
         
         # print(shadow_length)
 
@@ -1630,7 +1625,7 @@ class SolarPlanelEstimationApp:
             return
 
         self.update_lat_lng()
-        lavitage_height_str = self.lavitage_entry.get()
+        elevation_height_str = self.elevation_entry.get()
         
         local_datetime = datetime.datetime.strptime(date_input_str, "%Y/%m/%d %H:%M:%S")
 
@@ -1641,9 +1636,9 @@ class SolarPlanelEstimationApp:
         date = local_datetime.astimezone(pytz.utc)
         
         try:
-            lavitage_height = float(lavitage_height_str)
+            elevation_height = float(elevation_height_str)
         except ValueError:
-            lavitage_height = 0
+            elevation_height = 0
 
         # Calculate solar position using pysolar
         solar_altitude = get_altitude(self.Latitude, self.Longitude, date)
@@ -1664,7 +1659,7 @@ class SolarPlanelEstimationApp:
             x1,y1 = tree_permanent_points[1]
             r = math.dist([x0, y0], [x1, y1])
 
-            dh = self.bound(tree_permanent_points[2] - lavitage_height, 0,100)
+            dh = self.bound(tree_permanent_points[2] - elevation_height, 0,100)
 
             tree_shadow_length = (dh / math.tan(phi)) / self.scale_factor
 
@@ -1705,7 +1700,7 @@ class SolarPlanelEstimationApp:
         return distance_in_meters
     
     
-    def tilt_calcutation(self,angle):
+    def tilt_calculation(self,angle):
         self.update_lat_lng()
 
         date_input_str = "2021/09/21 12:10:00"
@@ -1874,9 +1869,8 @@ class SolarPlanelEstimationApp:
         return monthly_irradiation_percentage
 
 def main():
-    # root = ThemedTk(theme="equilux")
     root = tk.Tk()
-    app = SolarPlanelEstimationApp(root)
+    app = SolarPanelEstimationApp(root)
     root.mainloop()
 
 
