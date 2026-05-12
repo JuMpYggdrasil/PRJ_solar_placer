@@ -5,7 +5,7 @@ from typing import Callable, Optional
 
 
 class PanelListbox(ttk.Frame):
-    """Listbox of saved panel arrays with Edit/Delete/Duplicate buttons."""
+    """Listbox of saved panel arrays with Edit/Delete buttons."""
 
     def __init__(
         self,
@@ -13,7 +13,6 @@ class PanelListbox(ttk.Frame):
         on_select: Optional[Callable] = None,
         on_edit: Optional[Callable] = None,
         on_delete: Optional[Callable] = None,
-        on_duplicate: Optional[Callable] = None,
         **kwargs,
     ):
         super().__init__(master, **kwargs)
@@ -40,9 +39,6 @@ class PanelListbox(ttk.Frame):
         self.delete_btn = ttk.Button(btn_frame, text="Delete", command=on_delete if on_delete else self._noop, width=10)
         self.delete_btn.pack(side=tk.LEFT, padx=1)
 
-        self.dup_btn = ttk.Button(btn_frame, text="Duplicate", command=on_duplicate if on_duplicate else self._noop, width=10)
-        self.dup_btn.pack(side=tk.LEFT, padx=1)
-
         if on_select:
             self.listbox.bind("<<ListboxSelect>>", lambda e: on_select())
 
@@ -59,7 +55,6 @@ class PanelListbox(ttk.Frame):
         state = tk.NORMAL if has_selection else tk.DISABLED
         self.edit_btn["state"] = state
         self.delete_btn["state"] = state
-        self.dup_btn["state"] = state
 
     @staticmethod
     def _noop() -> None:

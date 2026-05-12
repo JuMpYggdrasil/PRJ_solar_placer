@@ -27,8 +27,6 @@ class Constants:
     DEFAULT_PVOUT = 1433.2
 
     REFERENCE_ZOOM_IN = 3
-    ROI_DISTANCE = 100
-    ROI_ZOOM_FACTOR = 5
     PVSYST_RATIO = 0.9
 
     JSON_FILE_PATH = "parameter.json"

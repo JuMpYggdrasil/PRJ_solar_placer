@@ -21,7 +21,6 @@ class Toolbar(ttk.Frame):
         on_keepout: Callable = lambda: None,
         on_toggle_panel_rotation: Callable = lambda: None,
         on_toggle_walk_gap_rotation: Callable = lambda: None,
-        on_toggle_zoom: Callable = lambda: None,
         **kwargs,
     ):
         super().__init__(master, **kwargs)
@@ -70,10 +69,6 @@ class Toolbar(ttk.Frame):
                         command=on_toggle_panel_rotation).pack(side=tk.LEFT)
         ttk.Checkbutton(rot_frame, text="Walk↻", variable=self.walk_gap_rotate_var,
                         command=on_toggle_walk_gap_rotation).pack(side=tk.LEFT)
-
-        self.zoom_var = tk.IntVar()
-        ttk.Checkbutton(rot_frame, text="Zoom", variable=self.zoom_var,
-                        command=on_toggle_zoom).pack(side=tk.LEFT)
 
         # ── Row 2: Panel type + Action buttons ──
         row2 = ttk.Frame(self)

@@ -9,7 +9,7 @@ from backend.services.geometry_service import GeometryService
 
 
 class CanvasView(ttk.Frame):
-    """Image canvas with zoom, drawing layers, and mouse event dispatch."""
+    """Image canvas with drawing layers and mouse event dispatch."""
 
     def __init__(
         self,
@@ -30,8 +30,6 @@ class CanvasView(ttk.Frame):
 
         self.original_image: Optional[Image.Image] = None
         self.tk_image: Optional[ImageTk.PhotoImage] = None
-        self.zoom_factor: float = 1.0
-        self.zoom_enabled: bool = False
 
         self._bg_image_id: Optional[int] = None
         self._overlay_ids: list[int] = []
@@ -55,7 +53,6 @@ class CanvasView(ttk.Frame):
         self.original_image = Image.open(image_path)
         new_size = (int(self.original_image.width * 7 / 10), int(self.original_image.height * 7 / 10))
         self.original_image = self.original_image.resize(new_size, Image.Resampling.LANCZOS)
-        self.zoom_factor = 1.0
 
     def set_cursor(self, cursor: str) -> None:
         self.master.config(cursor=cursor)
@@ -75,8 +72,6 @@ class CanvasView(ttk.Frame):
         shadow_points: list,
         already_draw_panel: bool,
         already_draw_shadow: bool,
-        show_zoom_roi: bool = False,
-        mouse_pos: Optional[tuple[int, int]] = None,
     ) -> None:
         self.canvas.delete("all")
         self._overlay_ids.clear()
@@ -84,9 +79,9 @@ class CanvasView(ttk.Frame):
         if self.original_image is None:
             return
 
-        w = int(self.original_image.width * self.zoom_factor)
-        h = int(self.original_image.height * self.zoom_factor)
-        resized = self.original_image.resize((w, h), Image.Resampling.LANCZOS)
+        w = self.original_image.width
+        h = self.original_image.height
+        resized = self.original_image
         self.tk_image = ImageTk.PhotoImage(resized)
         self.canvas.config(width=w, height=h)
         self.canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_image)
@@ -106,9 +101,6 @@ class CanvasView(ttk.Frame):
             self._dot(pt, "purple")
 
         self._draw_active_area(active_array)
-
-        if show_zoom_roi and mouse_pos:
-            self._display_zoom(mouse_pos[0], mouse_pos[1], w, h)
 
     # ── Private drawing helpers ──
 
@@ -273,27 +265,6 @@ class CanvasView(ttk.Frame):
             text=f"{angle_deg:.1f} deg",
             fill="black", font=("Helvetica", 10, "bold"),
         )
-
-    def _display_zoom(self, x: int, y: int, img_w: int, img_h: int) -> None:
-        if self.original_image is None:
-            return
-        roi_dist = 100
-        rx = min(min(x * 2, (img_w - x) * 2, roi_dist) if 0 < x < img_w else roi_dist, roi_dist)
-        ry = min(min(y * 2, (img_h - y) * 2, roi_dist) if 0 < y < img_h else roi_dist, roi_dist)
-
-        left, top = x - rx, y - ry
-        right, bottom = x + rx, y + ry
-
-        try:
-            roi = self.original_image.crop((left, top, right, bottom))
-            zoomed = roi.resize((rx * 5, ry * 5), Image.Resampling.LANCZOS)
-            self._zoom_tk = ImageTk.PhotoImage(zoomed)
-            self.canvas.create_image(
-                int(x + rx * 5 / 2), int(y + ry * 5 / 2),
-                anchor=tk.SE, image=self._zoom_tk,
-            )
-        except Exception:
-            pass
 
     def _dot(self, pt: tuple[float, float], color: str, r: int = 3) -> None:
         x, y = pt

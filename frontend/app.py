@@ -62,8 +62,7 @@ class SolarPanelEstimationApp:
                                        on_right_click=self._on_canvas_right_click,
                                        on_motion=self._on_canvas_motion,
                                        on_enter=self._on_canvas_enter,
-                                       on_leave=self._on_canvas_leave,
-                                       on_wheel=self._on_mousewheel)
+                                       on_leave=self._on_canvas_leave)
         if current_theme == "equilux":
             self.canvas_view.canvas.config(bg="gray25")
         self.canvas_view.pack()
@@ -114,9 +113,6 @@ class SolarPanelEstimationApp:
         self.walk_rot_var = tk.IntVar()
         ttk.Checkbutton(row1, text="W↻", variable=self.walk_rot_var,
                         command=self._on_entry_changed).pack(side=tk.LEFT)
-
-        self.zoom_var = tk.IntVar()
-        ttk.Checkbutton(row1, text="Zoom", variable=self.zoom_var).pack(side=tk.LEFT)
 
         # ── Row 2: Area + Distance labels ──
         row2 = ttk.Frame(left_frame)
@@ -169,8 +165,6 @@ class SolarPanelEstimationApp:
 
         ttk.Button(list_btn_frame, text="Edit", command=self._edit_panel, width=8).pack(pady=1)
         ttk.Button(list_btn_frame, text="Delete", command=self._delete_panel, width=8).pack(pady=1)
-        ttk.Button(list_btn_frame, text="Duplicate", command=self._duplicate_panel, width=8).pack(pady=1)
-
         # ══════════════════════════════════════
         # Tab 2: Shadow
         # ══════════════════════════════════════
@@ -219,8 +213,6 @@ class SolarPanelEstimationApp:
             shadow_points=self.session.shadow_points,
             already_draw_panel=self.session.already_draw_panel,
             already_draw_shadow=self.session.already_draw_shadow,
-            show_zoom_roi=self.zoom_var.get() == 1,
-            mouse_pos=(self._last_mouse_x, self._last_mouse_y) if hasattr(self, '_last_mouse_x') else None,
         )
 
         self._update_info_labels()
@@ -401,9 +393,6 @@ class SolarPanelEstimationApp:
         self._update_panel_settings()
         self._redraw()
 
-    def _on_toggle_zoom(self) -> None:
-        pass  # handled in redraw
-
     def _on_toggle_tree(self) -> None:
         pass
 
@@ -453,14 +442,13 @@ class SolarPanelEstimationApp:
                                               "Enter the scale factor (pixels to meters):")
                 if d_val is not None:
                     self.session.scale_factor = d_val / px_dist
-                    w = int(self.canvas_view.original_image.width * self.canvas_view.zoom_factor)
-                    h = int(self.canvas_view.original_image.height * self.canvas_view.zoom_factor)
+                    w = self.canvas_view.original_image.width
+                    h = self.canvas_view.original_image.height
                     self.session.reference_points = [
                         (int((x + 2 * w) / Constants.REFERENCE_ZOOM_IN),
                          int((y + 2 * h) / Constants.REFERENCE_ZOOM_IN))
                         for x, y in self.session.reference_points
                     ]
-                    self.canvas_view.canvas.unbind("<MouseWheel>")
                 else:
                     self._clear_all()
                     return
@@ -553,13 +541,6 @@ class SolarPanelEstimationApp:
                 x0, y0 = self.session.tree_points[0]
                 r = self.geo.pixel_distance((x0, y0), (x, y))
                 self.canvas_view.draw_circle(x0, y0, r, fill="lawn green", outline="white")
-
-    def _on_mousewheel(self, event) -> None:
-        if event.delta > 0:
-            self.canvas_view.zoom_factor *= 1.1
-        else:
-            self.canvas_view.zoom_factor /= 1.1
-        self._redraw()
 
     # ══════════════════════════════════════════════
     #  Button Actions
@@ -715,16 +696,6 @@ class SolarPanelEstimationApp:
         self._update_listbox()
         if not self.session.has_arrays:
             self.shadow_tab.enable_calc_shadow(False)
-        self._redraw()
-
-    def _duplicate_panel(self) -> None:
-        idx = self._selected_array_idx()
-        if idx is None:
-            return
-        original = self.session.arrays[idx]
-        dup = original.copy()
-        self.session.add_array(dup)
-        self._update_listbox()
         self._redraw()
 
     # ══════════════════════════════════════════════
