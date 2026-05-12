@@ -5,8 +5,6 @@ from tkinter import ttk
 from typing import Callable, Optional
 from PIL import Image, ImageTk
 
-from backend.services.geometry_service import GeometryService
-
 
 class CanvasView(ttk.Frame):
     """Image canvas with drawing layers and mouse event dispatch."""
@@ -14,25 +12,22 @@ class CanvasView(ttk.Frame):
     def __init__(
         self,
         master,
+        api=None,
         on_click: Optional[Callable] = None,
         on_right_click: Optional[Callable] = None,
         on_motion: Optional[Callable] = None,
         on_enter: Optional[Callable] = None,
         on_leave: Optional[Callable] = None,
-        on_wheel: Optional[Callable] = None,
         **kwargs,
     ):
         super().__init__(master, **kwargs)
-        self.geo = GeometryService()
+        self.api = api
 
         self.canvas = tk.Canvas(self, width=0, height=0, bg="gray25")
         self.canvas.pack()
 
         self.original_image: Optional[Image.Image] = None
         self.tk_image: Optional[ImageTk.PhotoImage] = None
-
-        self._bg_image_id: Optional[int] = None
-        self._overlay_ids: list[int] = []
 
         if on_click:
             self.canvas.bind("<Button-1>", on_click)
@@ -44,8 +39,6 @@ class CanvasView(ttk.Frame):
             self.canvas.bind("<Enter>", on_enter)
         if on_leave:
             self.canvas.bind("<Leave>", on_leave)
-        if on_wheel:
-            self.canvas.bind("<MouseWheel>", on_wheel)
 
     # ── Image management ──
 
@@ -66,15 +59,11 @@ class CanvasView(ttk.Frame):
         points: list,
         prohibited_points: list,
         prohibited_sets: list,
-        tree_sets: list,
         arrays: list,
         active_array,
-        shadow_points: list,
         already_draw_panel: bool,
-        already_draw_shadow: bool,
     ) -> None:
         self.canvas.delete("all")
-        self._overlay_ids.clear()
 
         if self.original_image is None:
             return
@@ -91,9 +80,7 @@ class CanvasView(ttk.Frame):
             return
 
         self._draw_prohibited(prohibited_points, prohibited_sets)
-        self._draw_shadows(shadow_points, already_draw_shadow)
-        self._draw_panels(arrays, active_array, prohibited_sets, already_draw_panel, already_draw_shadow)
-        self._draw_trees(tree_sets)
+        self._draw_panels(arrays, active_array, prohibited_sets, already_draw_panel)
 
         for pt in points:
             self._dot(pt, "yellow")
@@ -127,69 +114,55 @@ class CanvasView(ttk.Frame):
                     coords.extend(p)
                 self.canvas.create_polygon(*coords, fill="red", stipple="gray50")
 
-    def _draw_shadows(self, shadow_points: list, show: bool) -> None:
-        if not show or not shadow_points:
-            return
-        from backend.services.shadow_service import ShadowService
-        hull = ShadowService.convex_hull_points(shadow_points)
-        if len(hull) > 2:
-            flat = [c for pt in hull for c in pt]
-            self.canvas.create_polygon(*flat, stipple="gray50")
-
     def _draw_panels(
         self, arrays: list, active_array, prohibited_sets: list,
-        already_draw_panel: bool, already_draw_shadow: bool,
+        already_draw_panel: bool,
     ) -> None:
-        from backend.services.panel_arranger import PanelArranger
-        arranger = PanelArranger()
-
         all_arrays = list(arrays)
         if already_draw_panel and active_array.panel_points:
             all_arrays.append(active_array)
 
         for sa in all_arrays:
             is_active = (sa is active_array)
-            if not is_active and already_draw_shadow:
-                self._draw_skeleton(sa)
-                self._draw_text_label(sa, arrays.index(sa) if sa in arrays else len(arrays))
-                continue
-
             if not sa.panel_type or len(sa.panel_points) < 4:
                 continue
 
-            center, size, angle = arranger.get_setback_rect(sa) or ((0, 0), (0, 0), 0)
-            self._draw_rotated_rect(center, size, angle, color="gold", stipple="gray50")
-            self._draw_rotated_rect(center, size, angle, color="", stipple=None,
+            arr_data = self._build_sa_data(sa)
+            sbrect = self.api.setback_rect(arr_data)
+            if sbrect is None:
+                continue
+
+            self._draw_rotated_rect(sbrect["corners"], color="gold", stipple="gray50")
+            self._draw_rotated_rect(sbrect["corners"], color="", stipple=None,
                                     outline="navy", width=2)
-            self._draw_angle_label(center, size, angle)
+            self._draw_angle_label(sbrect["center"], sbrect["size"], sbrect["angle"])
 
-            result = arranger.arrange(sa, prohibited_sets)
-            sa.total_panel_count = result.total_count
-            sa.horizontal_panel_count = result.horizontal_count
-            sa.vertical_panel_count = result.vertical_count
-            sa.intersect_keepout_count = result.intersect_keepout_count
-            sa.kWp = result.kWp
+            result = self.api.arrange(arr_data, prohibited_sets)
+            sa.total_panel_count = result["total_count"]
+            sa.horizontal_panel_count = result["horizontal_count"]
+            sa.vertical_panel_count = result["vertical_count"]
+            sa.intersect_keepout_count = result["intersect_keepout_count"]
+            sa.kWp = result["kWp"]
+            sa.azimuth_angle = 90 - result["angle"]
 
-            for cx, cy in result.positions:
-                self._draw_rotated_rect((cx, cy), sa.small_rect_size, angle,
-                                        color="midnight blue", stipple=None, scaled=0.98)
+            for corners in result["panel_corners"]:
+                self._draw_rotated_rect(corners, color="midnight blue", stipple=None)
 
-            self._dot(center, "green")
+            if result["positions"]:
+                self._dot(result["positions"][0], "green")
             if not is_active:
                 self._draw_text_label(sa, arrays.index(sa) if sa in arrays else len(arrays))
 
-    def _draw_skeleton(self, solar_array) -> None:
-        from backend.services.panel_arranger import PanelArranger
-        arranger = PanelArranger()
-        rect = arranger.get_bounding_rect(solar_array)
-        if rect:
-            center, size, angle = rect
-            self._draw_rotated_rect(center, size, angle, color="gold", stipple="gray50")
-        sbrect = arranger.get_setback_rect(solar_array)
-        if sbrect:
-            center, size, angle = sbrect
-            self._draw_rotated_rect(center, size, angle, color="", stipple=None,
-                                    outline="navy", width=2)
+    def _build_sa_data(self, sa) -> dict:
+        return {
+            "panel_points": sa.panel_points if sa.panel_points else [],
+            "panel_type": sa.panel_type,
+            "setback_length": sa.setback_length,
+            "gap_size": list(sa.gap_size) if sa.gap_size else None,
+            "small_rect_size": list(sa.small_rect_size) if sa.small_rect_size else None,
+            "panel_rotation_tick": sa.panel_rotation_tick,
+            "walk_gap_rotation_tick": sa.walk_gap_rotation_tick,
+        }
 
     def _draw_text_label(self, solar_array, index: int) -> None:
         if len(solar_array.panel_points) < 4:
@@ -199,7 +172,7 @@ class CanvasView(ttk.Frame):
         pts = np.array(solar_array.panel_points[-4:], dtype=np.int32)
         rect = cv2.minAreaRect(pts)
         cx, cy = rect[0]
-        self.canvas.create_text(cx + 5, cy + 5, text=f"PV_{index + 1}", fill="yellow",
+        self.canvas.create_text(cx + 5, cy + 5, text=f"PV_{index + 1}", fill="dark green",
                                 font=("Helvetica", 10, "bold"))
 
     def _draw_active_area(self, solar_array) -> None:
@@ -211,21 +184,11 @@ class CanvasView(ttk.Frame):
                 self.canvas.create_line(*pts[i], *pts[i + 1], fill="orange")
             self.canvas.create_line(*pts[0], *pts[-1], fill="orange")
 
-    def _draw_trees(self, tree_sets: list) -> None:
-        for tree in tree_sets:
-            x0, y0 = tree[0]
-            x1, y1 = tree[1]
-            r = math.dist([x0, y0], [x1, y1])
-            self._circle(x0, y0, r, fill="lawn green", outline="")
-            self.canvas.create_text(x0, y0, text=f"{tree[2]:.1f} m",
-                                    fill="black", font=("Helvetica", 10, "bold"))
-
     def _draw_rotated_rect(
-        self, center, size, angle_deg,
-        color="lightblue", stipple="gray50", scaled=1.0,
+        self, corners,
+        color="lightblue", stipple="gray50",
         outline="", width=1,
     ) -> None:
-        corners = self.geo.compute_rotated_rect_corners(center, size, angle_deg, scaled)
         coords = [c for pt in corners for c in pt]
         kwargs = {"fill": color, "stipple": stipple, "outline": outline, "width": width}
         if not stipple:
@@ -272,11 +235,3 @@ class CanvasView(ttk.Frame):
 
     def _circle(self, x: float, y: float, r: float, fill: str = "", outline: str = "black") -> None:
         self.canvas.create_oval(x - r, y - r, x + r, y + r, fill=fill, outline=outline)
-
-    def draw_circle(self, x: float, y: float, r: float, fill: str = "", outline: str = "black") -> None:
-        self._circle(x, y, r, fill, outline)
-
-    def draw_2half_circle(self, x: float, y: float, r: float,
-                          fill_left: str = "green2", fill_right: str = "red") -> None:
-        self.canvas.create_arc(x - r, y - r, x + r, y + r, start=90, extent=180, fill=fill_left, outline="")
-        self.canvas.create_arc(x - r, y - r, x + r, y + r, start=-90, extent=180, fill=fill_right, outline="")

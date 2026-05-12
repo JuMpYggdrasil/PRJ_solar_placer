@@ -6,24 +6,26 @@ Tkinter desktop app for rooftop solar panel layout estimation from aerial imager
 
 ## Architecture
 
-Structured as **backend/frontend** layers:
+Separated into **frontend ↔ API ↔ backend** layers communicating via REST:
 
 ```
 main.py                          # Entry point: python main.py
 backend/
-├── models/                      # Pure data classes (SolarArray, PanelInfo, ProjectSession)
-├── services/                    # Business logic (PanelArranger, ShadowService, EnergyService, GeometryService)
+├── api/                         # FastAPI REST server (schemas, endpoints)
+├── models/                      # Pure data classes (SolarArray, PanelInfo)
+├── services/                    # Business logic (PanelArranger, GeometryService)
 └── repositories/                # Data access (JSON, Panel types, Constants)
 frontend/
-├── app.py                       # SolarPanelEstimationApp — orchestrator
-├── widgets/                     # Reusable widgets (CanvasView, Toolbar, PanelListbox, StatusBar)
-└── tabs/                        # Tab panels (PanelTab, ShadowTab, EnergyTab)
-standalone/
-├── plot_solar.py                # Sun-path (analemma) plot via pvlib
-└── weibull_wind.py              # Wind-speed Weibull analysis
+├── app.py                       # SolarPanelEstimationApp — Tkinter UI
+├── api_client.py                # HTTP client — sole bridge to backend
+├── widgets/                     # Reusable widgets (CanvasView)
+└── tabs/                        # Tab panels (PanelTab)
 ```
 
-**Key rule:** `backend/` never imports tkinter. `frontend/` imports `backend/`.
+**Key rules:**
+- `backend/` never imports tkinter.
+- `frontend/` never imports `backend/` directly — communicates solely via `ApiClient` (HTTP → FastAPI on port 8765).
+- `main.py` starts the FastAPI server in a daemon thread before launching Tkinter.
 
 ## Entrypoints
 
@@ -59,10 +61,10 @@ pysolar auto-detects numpy and switches to `numpy` math mode at import, which tr
 
 - **`SolarArray`** (`backend/models/solar_array.py`) — pure data class; no drawing logic.
 - **`PanelArranger`** (`backend/services/panel_arranger.py`) — flood-fill grid placement with `cv2.rotatedRectangleIntersection` keepout detection.
-- **`ShadowService`** (`backend/services/shadow_service.py`) — shadow geometry using `pysolar` + convex hull.
-- **`ProjectSession`** (`backend/models/project_session.py`) — holds all mutable project state in memory; no serialization.
-- **Workflow**: load image → click 2 reference points (calibrate scale) → click 4 boundary points → "PV Panel" → adjust gaps/setback → "Save Panel" → repeat → "Calculate Shadow" → read kWp/kWh totals.
-- Keepout zones: right-click 4 points → "Keepout". Trees: checkbox "Tree" mode → click center + radius edge → enter height.
+- **`ProjectSession`** — replaced by lightweight session object in `frontend/app.py` (pure dict-like, no backend imports).
+- **API endpoints** (`backend/api/server.py`): `/api/health`, `/api/constants`, `/api/panel-types`, `/api/panel/get`, `/api/panel/arrange`, `/api/panel/setback-rect`, `/api/panel/bounding-rect`, `/api/geometry/pixel-distance`, `/api/geometry/area`, `/api/geometry/distance`, `/api/geometry/point-in-polygon`.
+- **Workflow**: load image → click 2 reference points (calibrate scale) → click 4 boundary points → "PV Panel" → adjust gaps/setback → "Save Panel" → repeat.
+- Keepout zones: right-click 4 points → "Keepout".
 
 ## Style
 

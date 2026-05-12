@@ -13,17 +13,13 @@ class ProjectSession:
         self.points: list = []                     # current drawing points (pre-calibration)
         self.reference_points: list = []           # calibration reference points
         self.prohibited_points: list = []          # current keepout drawing points
-        self.tree_points: list = []                # current tree drawing points
-        self.shadow_points: list = []              # computed shadow hull points
 
         self.active_array: SolarArray = SolarArray([])
 
         self.arrays: list[SolarArray] = []          # saved panel arrays
         self.prohibited_permanent_sets: list = []   # saved keepout zones
-        self.tree_permanent_sets: list = []         # saved trees
 
         self.already_draw_panel: bool = False
-        self.already_draw_shadow: bool = False
 
     @property
     def has_arrays(self) -> bool:
@@ -43,11 +39,7 @@ class ProjectSession:
         self.points.clear()
         self.reference_points.clear()
         self.prohibited_points.clear()
-        self.tree_points.clear()
-        self.shadow_points.clear()
         self.active_array = SolarArray([])
         self.arrays.clear()
         self.prohibited_permanent_sets.clear()
-        self.tree_permanent_sets.clear()
         self.already_draw_panel = False
-        self.already_draw_shadow = False
