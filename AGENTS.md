@@ -2,78 +2,97 @@
 
 ## Project
 
-Tkinter desktop app for rooftop solar panel layout estimation from aerial imagery. Users load an image, calibrate scale, draw roof boundaries, and get panel counts, kWp, and energy estimates with shadow analysis.
+Rooftop solar panel layout estimation from aerial imagery. Load image → calibrate scale → draw roof boundary → arrange panels → save array. Two frontends share the same backend.
 
 ## Architecture
 
-Separated into **frontend ↔ API ↔ backend** layers communicating via REST:
-
 ```
-main.py                          # Entry point: python main.py
+main.py                          # Entry point (Tkinter default, --modern for web)
 backend/
-├── api/                         # FastAPI REST server (schemas, endpoints)
-├── models/                      # Pure data classes (SolarArray, PanelInfo)
-├── services/                    # Business logic (PanelArranger, GeometryService)
-└── repositories/                # Data access (JSON, Panel types, Constants)
-frontend/
-├── app.py                       # SolarPanelEstimationApp — Tkinter UI
-├── api_client.py                # HTTP client — sole bridge to backend
-├── widgets/                     # Reusable widgets (CanvasView)
-└── tabs/                        # Tab panels (PanelTab)
+├── api/                         # FastAPI REST server on port 8765
+├── models/                      # SolarArray, PanelInfo (pure data)
+├── services/                    # PanelArranger (flood-fill), GeometryService
+└── repositories/                # JSON read/write, panel type CRUD
+frontend/                        # Tkinter UI (python main.py)
+├── app.py, api_client.py, widgets/, tabs/
+frontend_modern/                 # Next.js web UI (python main.py --modern)
+├── src/app/page.tsx, components/, hooks/, services/, types/
 ```
 
-**Key rules:**
+**Rules:**
 - `backend/` never imports tkinter.
-- `frontend/` never imports `backend/` directly — communicates solely via `ApiClient` (HTTP → FastAPI on port 8765).
-- `main.py` starts the FastAPI server in a daemon thread before launching Tkinter.
+- `frontend/` and `frontend_modern/` never import `backend/` directly — communicate solely via `ApiClient` (HTTP → FastAPI on `127.0.0.1:8765`).
+- `main.py` starts FastAPI in daemon thread, then launches chosen frontend.
 
 ## Entrypoints
 
-- **`main.py`** — run `python main.py`
-- **`SolarPanelEstimation.py`** — legacy monolithic version (1876 lines, single file). Run: `python SolarPanelEstimation.py`
+| Command | Frontend |
+|---|---|
+| `python main.py` | Tkinter |
+| `python main.py --modern` | Next.js web (starts dev server + opens browser) |
+| `npm run dev` (in `frontend_modern/`) | Next.js dev server standalone |
+| `npm run build` (in `frontend_modern/`) | Production build |
 
 ## Dependencies
 
-- **`requirements.txt`** — install with: `pip install -r requirements.txt`
-- Python 3.10 (.venv points to `Python310`)
-- Virtual env activate: `.venv\Scripts\Activate.ps1`
-
-## Building EXE
-
-Uses PyInstaller via `.spec` files:
 ```
-pyinstaller SolarPanelEstimation.spec
+pip install -r requirements.txt   # Python (FastAPI, uvicorn, opencv, numpy, etc.)
+cd frontend_modern && npm install  # Node (Next.js, React, Tailwind)
 ```
-Build outputs go to `build/` and `dist/` (gitignored). `dist/SolarPanelEstimation.exe` is the distributable.
+
+Python 3.10, node available at `D:\nodejs\npx.CMD`.
 
 ## Pysolar Gotcha
 
-pysolar auto-detects numpy and switches to `numpy` math mode at import, which triggers numpy 2.x warnings. The app forces `pysolar.use_math()` right after `import pysolar` to use the built-in `math` module instead (scalar datetime inputs only, no functional impact). **Any agent adding pysolar imports must place `import pysolar; pysolar.use_math()` before `from pysolar.solar import ...`.**
+pysolar auto-detects numpy and switches to numpy math mode at import. The app forces `pysolar.use_math()` right after `import pysolar`. **Any agent adding pysolar imports must place `import pysolar; pysolar.use_math()` before `from pysolar.solar import ...`.**
 
 ## Config & Data
 
-- **`parameter.json`** — runtime read-write config: latitude, longitude, panel_info (model specs as `[power_W, width_m, height_m, model_str]`), Thai PV zipcode data. The app mutates this file.
-- **`parameter_backup.json`** — backup of the above.
-- **`sattahip_wind.csv`** — wind data for `weibull_wind.py`.
-- **`EDSR_x4.pb`** — TensorFlow upscaling model (unused in current code).
+- **`parameter.json`** — runtime read-write config: latitude, longitude, panel specs (`[power_W, width_m, height_m, model_str]`), Thai PV zipcode data. Mutated by app.
+- **`parameter_backup.json`** — backup copy.
+- **`SolarPanelEstimation.py`** — legacy monolithic (1876 lines), kept for reference. Not used.
+- **`sattahip_wind.csv`**, **`EDSR_x4.pb`**, **`standalone/`** — unused/unrelated files.
 
-## Key Architecture Notes
+## API Endpoints (all served by FastAPI)
 
-- **`SolarArray`** (`backend/models/solar_array.py`) — pure data class; no drawing logic.
-- **`PanelArranger`** (`backend/services/panel_arranger.py`) — flood-fill grid placement with `cv2.rotatedRectangleIntersection` keepout detection.
-- **`ProjectSession`** — replaced by lightweight session object in `frontend/app.py` (pure dict-like, no backend imports).
-- **API endpoints** (`backend/api/server.py`): `/api/health`, `/api/constants`, `/api/panel-types`, `/api/panel/get`, `/api/panel/arrange`, `/api/panel/setback-rect`, `/api/panel/bounding-rect`, `/api/geometry/pixel-distance`, `/api/geometry/area`, `/api/geometry/distance`, `/api/geometry/point-in-polygon`.
-- **Workflow**: load image → click 2 reference points (calibrate scale) → click 4 boundary points → "PV Panel" → adjust gaps/setback → "Save Panel" → repeat.
-- Keepout zones: right-click 4 points → "Keepout".
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/api/health` | Backend alive check |
+| GET | `/api/constants` | App constants (`REFERENCE_ZOOM_IN`: 3) |
+| GET | `/api/panel-types` | List all panel model specs |
+| POST | `/api/panel/get` | Get single panel type by name |
+| POST | `/api/panel/arrange` | Flood-fill panel arrangement with keepout detection |
+| POST | `/api/panel/setback-rect` | Setback inset rectangle (center, size, angle, corners) |
+| POST | `/api/panel/bounding-rect` | Bounding rotated rectangle |
+| POST | `/api/geometry/pixel-distance` | Euclidean distance between two points |
+| POST | `/api/geometry/area` | Shoelace area in m² |
+| POST | `/api/geometry/distance` | Real-world distance in m |
+| POST | `/api/geometry/point-in-polygon` | Ray-casting point containment test |
 
-## Style
+## Workflow
 
-- No tests, linter, typechecker, or CI configured.
-- Snake_case method names in `backend/`; mixed naming in legacy `frontend/` (migrating).
-- `backend/` has type hints; `frontend/` in progress.
+1. Browse Image → load aerial photo (70% resize, LANCZOS)
+2. Calibrate: click 2 reference points → enter real-world distance → scale factor computed
+3. Click 4 boundary points → minAreaRect computed → PV Panel button enables
+4. Select panel type, adjust gaps (GW/GH/Walk/Setback in meters), toggle rotations
+5. PV Panel → backend arranges flood-fill grid, draws panels (midnight-blue rotated rects)
+6. (Optional) Right-click 4 points → Keepout → red polygon zones, intersecting panels excluded
+7. Save → array added to saved list with kWp summary
+8. Edit/Delete saved arrays from sidebar list
 
-## Files to ignore
+## Key Code Locations
 
-- `build/`, `dist/` — PyInstaller artifacts (gitignored).
-- `__pycache__/`, `.venv/`, `*.jpg`, `*.png`, `*.spec` — runtime/build artifacts.
-- `SolarPanelEstimation.py` — legacy monolithic file (kept for reference).
+- `backend/api/server.py` — all 11 FastAPI endpoints
+- `backend/api/schemas.py` — Pydantic models (PanelInfoData, SolarArrayData, RectResult, ArrangeResult)
+- `backend/services/panel_arranger.py` — flood-fill grid with `cv2.rotatedRectangleIntersection`
+- `frontend/app.py` — SolarPanelEstimationApp (Tkinter), session state as lightweight object
+- `frontend_modern/src/hooks/useSession.tsx` — React context + state management for web frontend
+- `frontend_modern/src/hooks/useCanvasDrawing.ts` — canvas redraw pipeline (panels, keepout, labels)
+- `frontend_modern/src/components/CanvasView.tsx` — canvas with click/right-click handlers
+
+## Files to Ignore
+
+- `build/`, `dist/` — PyInstaller output (gitignored)
+- `__pycache__/`, `.venv/`, `*.jpg`, `*.png`, `*.spec` — runtime/build artifacts
+- `SolarPanelEstimation.py` — legacy monolith
+- `frontend_modern/.next/`, `frontend_modern/node_modules/` — Next.js build artifacts
